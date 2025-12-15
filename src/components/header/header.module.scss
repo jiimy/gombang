@@ -1,0 +1,32 @@
+.header {
+  position: relative;
+  display: flex;
+  min-height: 60px;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid #d9d9d9;
+  font-size: 20px;
+  padding: 0 16px;
+  transition: all 0.3s;
+  background: white;
+  z-index: 10;
+  &.is_home {
+    justify-content: space-between;
+    padding: 0 16px;
+  }
+  &.is_end {
+    justify-content: start;
+  }
+}
+
+.back {
+  position: absolute;
+  left: 16px;
+  top: 0;
+  bottom: 0;
+  margin: auto;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+}
+

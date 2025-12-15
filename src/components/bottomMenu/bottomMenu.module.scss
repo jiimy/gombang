@@ -1,0 +1,62 @@
+.bottom_menu {
+  display: flex;
+  position: relative;
+  width: 100%;
+  height: 60px;
+  flex: 0 0 auto;
+  border-top: 1px solid #ccc;
+  background: white;
+  z-index: 1;
+  align-items: center;
+
+  &.is_submit {
+    justify-content: end;
+  }
+  &:has(button) {
+    justify-content: end;
+    gap: 48px;
+  }
+  button {
+    font-size: 20px;
+    &:disabled {
+      color: #bebebe;
+    }
+  }
+  ul {
+    display: flex;
+    width: 100%;
+    height: 40px;
+    align-items: center;
+    justify-content: space-evenly;
+  }
+  li {
+    width: 100%;
+    height: 100%;
+    > span {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100%;
+      cursor: pointer;
+    }
+    button {
+      background: #262626;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+    }
+    a {
+      display: flex;
+      width: 100%;
+      height: 100%;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+}
+
+.text_bottom {
+  display: flex;
+  text-align: right;
+  
+}

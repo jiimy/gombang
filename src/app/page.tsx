@@ -1,5 +1,7 @@
 'use client';
 import { readThemeApi } from "@/api/board";
+import BottomMenu from "@/components/bottomMenu/BottomMenu";
+import Header from "@/components/header/Header";
 import { useQuery } from "@tanstack/react-query";
 import Image from "next/image";
 
@@ -13,8 +15,12 @@ export default function Home() {
   console.log('dd', youtubeInfo);
 
   return (
-    <div className="flex items-center justify-center min-h-screen font-sans bg-zinc-50 dark:bg-black">
-      test
+    <div>
+      <Header>헤더</Header>
+      <div className="content">
+        내용
+      </div>
+      <BottomMenu/>
     </div>
   );
 }

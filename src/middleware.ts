@@ -63,12 +63,13 @@ export async function middleware(request: NextRequest) {
     // console.log("request", request.nextUrl.pathname);
     // console.log("user", user);
     // protected routes
-    if (
-      request.nextUrl.pathname.startsWith("/mypage") &&
-      user?.data?.user === null
-    ) {
-      return NextResponse.redirect(new URL("/login", request.url));
-    }
+    // if (
+    //   request.nextUrl.pathname.startsWith("/mypage") &&
+    //   user?.data?.user === null
+    // ) {
+    //   return NextResponse.redirect(new URL("/login", request.url));
+    // }
+
     if (
       request.nextUrl.pathname.startsWith("/bookmark") &&
       user?.data?.user === null

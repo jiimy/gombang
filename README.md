@@ -1,5 +1,41 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Supabase 소셜 로그인 설정
+
+이 프로젝트는 Supabase를 사용한 소셜 로그인을 지원합니다.
+
+### 1. 환경 변수 설정
+
+`.env.local` 파일을 생성하고 다음 환경 변수를 설정하세요:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+NEXT_SUPABASE_SERVICE_ROLE=your_supabase_service_role_key (선택사항)
+```
+
+### 2. Supabase 프로젝트 설정
+
+1. [Supabase](https://supabase.com)에서 프로젝트를 생성합니다.
+2. Authentication > Providers에서 사용할 소셜 로그인 제공자를 활성화합니다:
+   - Google
+   - GitHub
+   - Kakao
+3. 각 제공자의 Client ID와 Client Secret을 설정합니다.
+4. Redirect URL에 `http://localhost:3000/api/auth/callback` (개발 환경)과 프로덕션 URL을 추가합니다.
+
+### 3. 지원하는 소셜 로그인
+
+- Google
+- GitHub
+- Kakao
+
+### 4. 사용 방법
+
+- 로그인: `/login` 페이지에서 원하는 소셜 로그인 버튼을 클릭합니다.
+- 로그아웃: 마이페이지에서 로그아웃 버튼을 클릭합니다.
+- 인증 상태 확인: `useAuth` 훅을 사용하여 현재 사용자 정보를 가져올 수 있습니다.
+
 ## Getting Started
 
 First, run the development server:

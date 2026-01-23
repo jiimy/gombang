@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // if (pathname.startsWith("/mypage") && !request.cookies.get("session-id")) {
@@ -63,12 +63,12 @@ export async function middleware(request: NextRequest) {
     // console.log("request", request.nextUrl.pathname);
     // console.log("user", user);
     // protected routes
-    // if (
-    //   request.nextUrl.pathname.startsWith("/mypage") &&
-    //   user?.data?.user === null
-    // ) {
-    //   return NextResponse.redirect(new URL("/login", request.url));
-    // }
+    if (
+      request.nextUrl.pathname.startsWith("/mypage") &&
+      user?.data?.user === null
+    ) {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
 
     if (
       request.nextUrl.pathname.startsWith("/bookmark") &&

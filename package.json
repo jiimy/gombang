@@ -19,6 +19,7 @@
     "@tanstack/react-query-devtools": "^5.91.1",
     "@tanstack/react-query-next-experimental": "^5.91.0",
     "axios": "^1.13.2",
+    "cheerio": "^1.2.0",
     "class-variance-authority": "^0.7.1",
     "classnames": "^2.5.1",
     "clsx": "^2.1.1",

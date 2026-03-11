@@ -1,26 +1,34 @@
-import { NextResponse } from "next/server";
+import * as cheerio from 'cheerio';
+import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
 export async function GET() {
-  const url =
-    "https://api.bangpot.com/reserve/search" +
-    "?title=아로새" +
-    "&minPrice=10000" +
-    "&date=6" +
-    "&fear=0";
+  try {
+    const res = await fetch('https://www.xn--2e0b040a4xj.com/theme');
+    const html = await res.text();
 
-  const res = await fetch(url, {
-    headers: {
-      "User-Agent": "Mozilla/5.0",
-      "Accept": "application/json",
-    },
-    cache: "no-store",
-  });
+    const $ = cheerio.load(html);
 
-  if (!res.ok) {
-    return NextResponse.json({ error: "fetch failed" }, { status: 500 });
+    const themes: string[] = [];
+
+    $('h2').each((_, el) => {
+      const text = $(el).text().trim();
+
+      if (text.startsWith('#')) {
+        themes.push(text);
+      }
+    });
+    console.log("themes: ", themes)
+    return NextResponse.json({
+      themes,
+      count: themes.length
+    });
+    // return NextResponse.json({ data, count }, { status: 200 });
+  } catch (error) {
+    console.error('Error fetching themes: ', error);
+    return NextResponse.json(
+      { error: "crawl failed" },
+      { status: 500 }
+    );
   }
-
-  const data = await res.json();
-
-  return NextResponse.json(data);
 }

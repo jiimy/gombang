@@ -1,33 +1,54 @@
-import * as cheerio from 'cheerio';
-import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import * as cheerio from "cheerio";
+import { NextResponse } from "next/server";
+import { createServerSupabase } from "@/util/supabase/server";
 
 export async function GET() {
   try {
-    const res = await fetch('https://www.xn--2e0b040a4xj.com/theme');
+    const supabase = await createServerSupabase();
+
+    const res = await fetch("https://www.xn--2e0b040a4xj.com/theme");
     const html = await res.text();
 
     const $ = cheerio.load(html);
 
-    const themes: string[] = [];
+    const rows: any[] = [];
 
-    $('h2').each((_, el) => {
+    $("h2").each((_, el) => {
       const text = $(el).text().trim();
 
-      if (text.startsWith('#')) {
-        themes.push(text);
-      }
+      if (!text.startsWith("#")) return;
+
+      const parts = text.split("\n").map((v) => v.trim());
+
+      if (parts.length < 2) return;
+
+      rows.push({
+        themename: parts[1],
+        location: parts[0].replace("#", ""),
+        shop_name: "지구별",
+      });
     });
-    console.log("themes: ", themes)
+
+    console.log("rows", rows);
+
+    const { data, error } = await supabase
+      .from("theme")
+      .upsert(rows, {
+        onConflict: "themename,location",
+        ignoreDuplicates: true,
+      });
+
+    if (error) throw error;
+
     return NextResponse.json({
-      themes,
-      count: themes.length
+      inserted: rows.length,
     });
-    // return NextResponse.json({ data, count }, { status: 200 });
+
   } catch (error) {
-    console.error('Error fetching themes: ', error);
+    console.error("Error fetching themes:", error);
+
     return NextResponse.json(
-      { error: "crawl failed" },
+      { error: String(error) },
       { status: 500 }
     );
   }

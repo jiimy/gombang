@@ -11,7 +11,7 @@ export async function GET() {
 
     const $ = cheerio.load(html);
 
-    const rows: any[] = [];
+    const rows: { themename: string; location: string; shop_name: string }[] = [];
 
     $("h2").each((_, el) => {
       const text = $(el).text().trim();

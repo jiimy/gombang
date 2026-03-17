@@ -27,6 +27,7 @@
     "next": "16.0.6",
     "playwright": "^1.57.0",
     "react": "19.2.0",
+    "react-calendar": "^6.0.0",
     "react-cookie": "^8.0.1",
     "react-dom": "19.2.0",
     "react-hook-form": "^7.68.0",

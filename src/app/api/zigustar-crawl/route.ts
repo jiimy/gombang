@@ -2,6 +2,7 @@ import * as cheerio from "cheerio";
 import { NextResponse } from "next/server";
 import { createServerSupabase } from "@/util/supabase/server";
 
+// 지구별 크롤링.
 export async function GET() {
   try {
     const supabase = await createServerSupabase();

@@ -8,10 +8,12 @@ import { createRecord } from '@/api/record';
 import { Input } from '@/components/ui/input';
 import dynamic from 'next/dynamic';
 import 'react-calendar/dist/Calendar.css';
+import GroupModal from '@/components/portalModal/groupModal/GroupModal';
 
 const Calendar = dynamic(() => import('react-calendar').then((m) => m.default), { ssr: false });
 
 type ThemeRow = { themename: string; shop_name: string | null };
+type UserGroupRow = { group_name: string | null; name: string | null };
 
 const defaultValues: formType = {
   themeName: '',
@@ -47,6 +49,12 @@ const RecodePage = () => {
   const themeInputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [groups, setGroups] = useState<UserGroupRow[]>([]);
+  const [groupLoading, setGroupLoading] = useState(false);
+  const [groupError, setGroupError] = useState<string | null>(null);
+  const [groupModalOpen, setGroupModalOpen] = useState(false);
+  const [activeGroup, setActiveGroup] = useState<UserGroupRow | null>(null);
 
   const {
     register,
@@ -137,8 +145,48 @@ const RecodePage = () => {
     }
   };
 
+  const fetchUserGroups = useCallback(async () => {
+    setGroupLoading(true);
+    setGroupError(null);
+    try {
+      const res = await fetch('/api/user-group');
+      const json = (await res.json()) as
+        | { data: UserGroupRow[] }
+        | { error: string };
+      if (!res.ok || 'error' in json) {
+        throw new Error('error' in json ? json.error : '그룹 조회 실패');
+      }
+      setGroups(json.data ?? []);
+    } catch (e) {
+      setGroups([]);
+      setGroupError(e instanceof Error ? e.message : '그룹 조회 실패');
+    } finally {
+      setGroupLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUserGroups();
+  }, [fetchUserGroups]);
+
+  const openGroupModal = (row: UserGroupRow) => {
+    setActiveGroup(row);
+    setGroupModalOpen(true);
+  };
+
+  const mergeParticipantsCsv = (prevCsv: string, nextCsv: string) => {
+    const toList = (v: string) =>
+      v
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+    const merged = [...toList(prevCsv), ...toList(nextCsv)];
+    const uniq = Array.from(new Set(merged));
+    return uniq.join(', ');
+  };
+
   return (
-    <div className="min-h-screen p-4 pb-24 bg-zinc-50">
+    <div className="min-h-screen p-4 pb-10 bg-zinc-50">
       <form onSubmit={handleSubmit(onSubmit)} className="w-full space-y-5">
         {/* 테마명 (필수) */}
         <div className="relative" ref={dropdownRef}>
@@ -251,6 +299,35 @@ const RecodePage = () => {
           />
         </div>
 
+        {/* 그룹 */}
+        <div className="space-y-2">
+          {groupLoading && <div className="text-xs text-zinc-500">그룹 조회 중...</div>}
+          {groupError && <div className="text-xs text-red-500">{groupError}</div>}
+
+          {!groupLoading && !groupError && groups.length === 0 && (
+            <div className="text-xs text-zinc-500">조회된 그룹이 없습니다.</div>
+          )}
+
+          {groups.length > 0 && (
+            <div className="flex flex-wrap gap-2 pt-1">
+              {groups.map((g, idx) => {
+                const label = (g.group_name || `그룹 ${idx + 1}`).trim();
+                return (
+                  <button
+                    key={`${label}-${idx}`}
+                    type="button"
+                    className="px-3 py-1 text-sm bg-white border rounded-full border-zinc-200 hover:bg-zinc-50"
+                    onClick={() => openGroupModal(g)}
+                    title="클릭해서 멤버 선택"
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {/* 참여인원 (읽기 전용) */}
         <div>
           <label className="block mb-1 text-sm font-medium text-zinc-700">참여인원</label>
@@ -322,6 +399,17 @@ const RecodePage = () => {
           {isSubmitting ? '저장 중...' : '저장'}
         </button>
       </form>
+
+      {groupModalOpen && activeGroup && (
+        <GroupModal
+          setOnModal={setGroupModalOpen}
+          groupName={(activeGroup.group_name || '그룹').trim()}
+          namesCsv={activeGroup.name || ''}
+          onConfirm={(selectedNamesCsv) => {
+            setValue('participants', mergeParticipantsCsv(participants ?? '', selectedNamesCsv));
+          }}
+        />
+      )}
     </div>
   );
 };

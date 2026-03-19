@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     } = body;
 
     const recordRow = {
-      user_id: session.user.id,
+      email: session.user.email,
       themename: themeName ?? '',
       date: date ?? '',
       shop_name: shopName ?? null,

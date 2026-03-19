@@ -4,16 +4,17 @@
 // import { isLogin } from '@/util/authCookie';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import s from './mypage.module.scss';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
+import GroupModal from '@/components/portalModal/groupModal/GroupModal';
 
 const MyPage = () => {
   const router = useRouter();
   const { user, loading, signOut } = useAuth();
-
+  const [groupModalOpen, setGroupModalOpen] = useState<boolean>(false);
   // const { data } = useQuery({
   //   queryFn: () => myYoutubeUplaodApi(),
   //   queryKey: ['myYoutubeUpload']
@@ -61,7 +62,7 @@ const MyPage = () => {
                 className="rounded-full"
               />
             ) : (
-              <div className="w-16 h-16 rounded-full bg-gray-300 flex items-center justify-center">
+              <div className="flex items-center justify-center w-16 h-16 bg-gray-300 rounded-full">
                 {user.email?.charAt(0).toUpperCase()}
               </div>
             )}
@@ -75,7 +76,7 @@ const MyPage = () => {
           <div className="input_wrap">
             <input type="text" value={user.user_metadata?.full_name || user.email || ''} readOnly />
           </div>
-          <div className="input_wrap mt-2">
+          <div className="mt-2 input_wrap">
             <Button onClick={handleLogout} variant="outline" className="w-full">
               로그아웃
             </Button>
@@ -83,19 +84,19 @@ const MyPage = () => {
         </div>
       </div>
       <div>
-        <div className="title">
-          내가 올린 영상
-          <span onClick={() => router.push('/mypage/upload')}>모두 보기</span>
-        </div>
         <ul>
           <li>
-            <div>영상</div>
-            <div>영상제목</div>
+            그룹관리
+            <button
+              type="button"
+              onClick={() => setGroupModalOpen(true)}
+              className="text-blue-600 underline underline-offset-2 hover:text-blue-800"
+            >
+              (그룹 관리 열기)
+            </button>
           </li>
         </ul>
       </div>
-      <div>고객센터 링크</div>
-      <div>회원탈퇴</div>
     </>
   );
 };

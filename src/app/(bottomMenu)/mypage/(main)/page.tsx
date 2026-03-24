@@ -9,7 +9,7 @@ import s from './mypage.module.scss';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
-import GroupModal from '@/components/portalModal/groupModal/GroupModal';
+import GroupModal from '@/components/portalModal/groupSelectModal/GroupSelectModal';
 
 const MyPage = () => {
   const router = useRouter();
@@ -86,13 +86,23 @@ const MyPage = () => {
       <div>
         <ul>
           <li>
-            그룹관리
             <button
               type="button"
               onClick={() => setGroupModalOpen(true)}
               className="text-blue-600 underline underline-offset-2 hover:text-blue-800"
             >
               (그룹 관리 열기)
+            </button>
+          </li>
+          <li>
+            <button
+              type="button"
+              onClick={() => {
+                router.push('/mypage/analysis');
+              }}
+              className="text-blue-600 underline underline-offset-2 hover:text-blue-800"
+            >
+              /mypage/analysis 로 이동
             </button>
           </li>
         </ul>

@@ -11,6 +11,7 @@ interface formType {
   shopName?: string;
   price?: string;
   participants?: string;
+  partPersonCount?: string;
   recommendedPeople?: string;
   comment?: string;
   commentPublic?: boolean; // true: 외부 공개, false: 비공개

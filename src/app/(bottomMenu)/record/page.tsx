@@ -8,7 +8,7 @@ import { createRecord } from '@/api/record';
 import { Input } from '@/components/ui/input';
 import dynamic from 'next/dynamic';
 import 'react-calendar/dist/Calendar.css';
-import GroupModal from '@/components/portalModal/groupModal/GroupModal';
+import GroupModal from '@/components/portalModal/groupSelectModal/GroupSelectModal';
 
 const Calendar = dynamic(() => import('react-calendar').then((m) => m.default), { ssr: false });
 
@@ -21,6 +21,7 @@ const defaultValues: formType = {
   shopName: '',
   price: '',
   participants: '',
+  partPersonCount: '',
   recommendedPeople: '',
   comment: '',
   commentPublic: false,
@@ -35,10 +36,42 @@ function formatPrice(value: string): string {
 
 function parseParticipantCount(participants: string): number {
   if (!participants?.trim()) return 0;
-  return participants
+  const tokens = participants
     .split(',')
     .map((s) => s.trim())
-    .filter(Boolean).length;
+    .filter(Boolean);
+  if (tokens.length === 0) return 0;
+
+  // 기본값: 콤마 구분 개수 + 1
+  // "남 2" 같은 토큰은 기본 1명을 n명으로 치환하므로 (n - 1)만 추가
+  const baseCount = tokens.length + 1;
+  const extraFromNumericTokens = tokens.reduce((sum, token) => {
+    const numericPart = token.match(/\s+(\d+)\s*$/)?.[1];
+    if (!numericPart) return sum;
+    const n = Number(numericPart);
+    if (!Number.isFinite(n) || n <= 1) return sum;
+    return sum + (n - 1);
+  }, 0);
+
+  return baseCount + extraFromNumericTokens;
+}
+
+function splitCsvNames(value: string) {
+  return value
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+/** 참여자 문자열에 이 그룹 멤버 이름이 하나라도 있으면 true (그룹별 버튼 강조용) */
+function groupHasMembersInParticipants(
+  groupNamesCsv: string | null | undefined,
+  participantsCsv: string | undefined
+): boolean {
+  const groupNames = splitCsvNames(groupNamesCsv ?? '');
+  if (groupNames.length === 0) return false;
+  const partSet = new Set(splitCsvNames(participantsCsv ?? ''));
+  return groupNames.some((n) => partSet.has(n));
 }
 
 const RecodePage = () => {
@@ -55,6 +88,8 @@ const RecodePage = () => {
   const [groupError, setGroupError] = useState<string | null>(null);
   const [groupModalOpen, setGroupModalOpen] = useState(false);
   const [activeGroup, setActiveGroup] = useState<UserGroupRow | null>(null);
+  const [activeGroupKey, setActiveGroupKey] = useState<string | null>(null);
+  const [groupDraftSelections, setGroupDraftSelections] = useState<Record<string, string[]>>({});
 
   const {
     register,
@@ -69,10 +104,24 @@ const RecodePage = () => {
 
   const themeName = useWatch({ control, name: 'themeName', defaultValue: '' });
   const participants = useWatch({ control, name: 'participants', defaultValue: '' });
-  const participantCount = useMemo(
+  const partPersonCount = useWatch({ control, name: 'partPersonCount', defaultValue: '' });
+  const autoParticipantCount = useMemo(
     () => parseParticipantCount(participants ?? ''),
     [participants]
   );
+  const prevAutoParticipantCountRef = useRef<string>('');
+
+  useEffect(() => {
+    const nextAutoValue = String(autoParticipantCount);
+    const currentValue = partPersonCount?.trim() ?? '';
+    const prevAutoValue = prevAutoParticipantCountRef.current;
+
+    // 비어있거나, 이전 자동값 그대로인 경우에는 최신 자동값으로 동기화
+    if (!currentValue || currentValue === prevAutoValue) {
+      setValue('partPersonCount', nextAutoValue, { shouldDirty: false });
+    }
+    prevAutoParticipantCountRef.current = nextAutoValue;
+  }, [autoParticipantCount, partPersonCount, setValue]);
 
   const searchThemes = useCallback(
     async (query: string) => {
@@ -132,7 +181,8 @@ const RecodePage = () => {
         shopName: data.shopName || undefined,
         price: data.price || undefined,
         participants: data.participants || undefined,
-        partPersonCount: parseParticipantCount(data.participants ?? ''),
+        partPersonCount:
+          Number(data.partPersonCount?.trim()) || parseParticipantCount(data.participants ?? ''),
         recommendedPeople: data.recommendedPeople || undefined,
         comment: data.comment || undefined,
         commentPublic: data.commentPublic ?? false,
@@ -170,18 +220,30 @@ const RecodePage = () => {
   }, [fetchUserGroups]);
 
   const openGroupModal = (row: UserGroupRow) => {
+    const groupKey = `${row.group_name ?? ''}__${row.name ?? ''}`;
+    setActiveGroupKey(groupKey);
     setActiveGroup(row);
+    setGroupDraftSelections((prev) => {
+      const memberNames = splitCsvNames(row.name ?? '');
+      const participantSet = new Set(splitCsvNames(participants ?? ''));
+      const initialSelected = memberNames.filter((name) => participantSet.has(name));
+      return { ...prev, [groupKey]: initialSelected };
+    });
     setGroupModalOpen(true);
   };
 
-  const mergeParticipantsCsv = (prevCsv: string, nextCsv: string) => {
-    const toList = (v: string) =>
-      v
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
-    const merged = [...toList(prevCsv), ...toList(nextCsv)];
-    const uniq = Array.from(new Set(merged));
+  const replaceGroupMembersInParticipants = (
+    prevCsv: string,
+    groupMembersCsv: string,
+    selectedCsv: string
+  ) => {
+    const prevList = splitCsvNames(prevCsv);
+    const groupMemberSet = new Set(splitCsvNames(groupMembersCsv));
+    const selectedList = splitCsvNames(selectedCsv);
+
+    const withoutCurrentGroup = prevList.filter((name) => !groupMemberSet.has(name));
+    const next = [...withoutCurrentGroup, ...selectedList];
+    const uniq = Array.from(new Set(next));
     return uniq.join(', ');
   };
 
@@ -300,6 +362,7 @@ const RecodePage = () => {
         </div>
 
         {/* 그룹 */}
+        {/* TODO: 그룹설정 모달 열리는 버튼 추가 */}
         <div className="space-y-2">
           {groupLoading && <div className="text-xs text-zinc-500">그룹 조회 중...</div>}
           {groupError && <div className="text-xs text-red-500">{groupError}</div>}
@@ -312,11 +375,17 @@ const RecodePage = () => {
             <div className="flex flex-wrap gap-2 pt-1">
               {groups.map((g, idx) => {
                 const label = (g.group_name || `그룹 ${idx + 1}`).trim();
+                const hasAdded = groupHasMembersInParticipants(g.name, participants);
                 return (
                   <button
                     key={`${label}-${idx}`}
                     type="button"
-                    className="px-3 py-1 text-sm bg-white border rounded-full border-zinc-200 hover:bg-zinc-50"
+                    className={cn(
+                      'px-3 py-1 text-sm rounded-full border transition-colors',
+                      hasAdded
+                        ? 'border-emerald-500 bg-emerald-50 font-medium text-emerald-900 shadow-sm hover:bg-emerald-100'
+                        : 'border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50'
+                    )}
                     onClick={() => openGroupModal(g)}
                     title="클릭해서 멤버 선택"
                   >
@@ -328,12 +397,14 @@ const RecodePage = () => {
           )}
         </div>
 
-        {/* 참여인원 (읽기 전용) */}
+        {/* 참여인원 (선택, 참여자 입력 시 자동 계산 값 기본 반영) */}
         <div>
           <label className="block mb-1 text-sm font-medium text-zinc-700">참여인원</label>
-          <div className="flex items-center w-full h-10 px-3 py-2 text-sm border rounded-md border-zinc-200 bg-zinc-100 text-zinc-600">
-            {participantCount}명
-          </div>
+          <Input
+            type="number"
+            {...register('partPersonCount')}
+            placeholder={`자동 계산: ${autoParticipantCount}`}
+          />
         </div>
 
         {/* 추천인원 (선택) */}
@@ -405,8 +476,20 @@ const RecodePage = () => {
           setOnModal={setGroupModalOpen}
           groupName={(activeGroup.group_name || '그룹').trim()}
           namesCsv={activeGroup.name || ''}
+          selectedNames={activeGroupKey ? (groupDraftSelections[activeGroupKey] ?? []) : []}
+          onSelectedNamesChange={(names) => {
+            if (!activeGroupKey) return;
+            setGroupDraftSelections((prev) => ({ ...prev, [activeGroupKey]: names }));
+          }}
           onConfirm={(selectedNamesCsv) => {
-            setValue('participants', mergeParticipantsCsv(participants ?? '', selectedNamesCsv));
+            setValue(
+              'participants',
+              replaceGroupMembersInParticipants(
+                participants ?? '',
+                activeGroup.name ?? '',
+                selectedNamesCsv
+              )
+            );
           }}
         />
       )}

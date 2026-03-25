@@ -17,6 +17,7 @@ export async function POST(request: Request) {
     const {
       themeName,
       date,
+      genre,
       shopName,
       price,
       participants,
@@ -25,12 +26,14 @@ export async function POST(request: Request) {
       comment,
       commentPublic,
       spoiler,
+      userName,
     } = body;
 
     const recordRow = {
       email: session.user.email,
       themename: themeName ?? '',
       date: date ?? '',
+      genre: genre ?? null,
       shop_name: shopName ?? null,
       price: price ?? null,
       participant: participants ?? null,
@@ -39,6 +42,8 @@ export async function POST(request: Request) {
       comment: comment ?? null,
       comment_public: commentPublic ?? false,
       spoiler: spoiler ?? null,
+      user_name:
+        userName ?? (session.user.user_metadata as unknown as { full_name: string; name: string })?.full_name ?? (session.user.user_metadata as unknown as { name: string })?.name ?? null,
     };
 
     const { data, error } = await supabase.from('record').insert(recordRow).select().single();
@@ -51,6 +56,39 @@ export async function POST(request: Request) {
     return NextResponse.json({ data }, { status: 201 });
   } catch (err) {
     console.error('record API error:', err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : '서버 오류' },
+      { status: 500 }
+    );
+  }
+}
+
+// 공개 댓글 목록 조회
+// - 인증 없이 접근 가능
+// - `comment_public = true` 인 record만 반환
+export async function GET(request: Request) {
+  try {
+    const supabase = await createServerSupabase();
+    const { searchParams } = new URL(request.url);
+
+    const limit = Number(searchParams.get('limit') ?? 20);
+    const safeLimit = Number.isFinite(limit) ? Math.min(Math.max(limit, 1), 100) : 20;
+
+    const { data, error } = await supabase
+      .from('record')
+      .select('date,recomm_person_count,comment,genre,themename,shop_name,user_name')
+      .eq('comment_public', true)
+      .order('id', { ascending: false })
+      .limit(safeLimit);
+
+    if (error) {
+      console.error('record public list error:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ data: data ?? [] }, { status: 200 });
+  } catch (err) {
+    console.error('record public list API error:', err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : '서버 오류' },
       { status: 500 }

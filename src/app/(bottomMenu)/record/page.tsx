@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input';
 import dynamic from 'next/dynamic';
 import 'react-calendar/dist/Calendar.css';
 import GroupModal from '@/components/portalModal/groupSelectModal/GroupSelectModal';
+import ConfirmModal from '@/components/portalModal/confirmModal/ConfirmModal';
+import { useAuth } from '@/hooks/useAuth';
 
 const Calendar = dynamic(() => import('react-calendar').then((m) => m.default), { ssr: false });
 
@@ -18,6 +20,7 @@ type UserGroupRow = { group_name: string | null; name: string | null };
 const defaultValues: formType = {
   themeName: '',
   date: '',
+  genre: '',
   shopName: '',
   price: '',
   participants: '',
@@ -63,6 +66,31 @@ function splitCsvNames(value: string) {
     .filter(Boolean);
 }
 
+function normalizeParticipantToken(token: string): string {
+  return token.replace(/\s+\d+\s*$/, '').trim();
+}
+
+function splitParticipantBaseNames(participantsCsv: string | undefined): string[] {
+  return splitCsvNames(participantsCsv ?? '').map(normalizeParticipantToken).filter(Boolean);
+}
+
+function formatLocalYmd(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function parseYmdToLocalDate(ymd: string): Date | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd);
+  if (!m) return null;
+  const y = Number(m[1]);
+  const mm = Number(m[2]);
+  const dd = Number(m[3]);
+  if (!Number.isFinite(y) || !Number.isFinite(mm) || !Number.isFinite(dd)) return null;
+  return new Date(y, mm - 1, dd);
+}
+
 /** 참여자 문자열에 이 그룹 멤버 이름이 하나라도 있으면 true (그룹별 버튼 강조용) */
 function groupHasMembersInParticipants(
   groupNamesCsv: string | null | undefined,
@@ -70,12 +98,13 @@ function groupHasMembersInParticipants(
 ): boolean {
   const groupNames = splitCsvNames(groupNamesCsv ?? '');
   if (groupNames.length === 0) return false;
-  const partSet = new Set(splitCsvNames(participantsCsv ?? ''));
+  const partSet = new Set(splitParticipantBaseNames(participantsCsv));
   return groupNames.some((n) => partSet.has(n));
 }
 
 const RecodePage = () => {
   const supabase = createClient();
+  const { user } = useAuth();
   const [themeSuggestions, setThemeSuggestions] = useState<ThemeRow[]>([]);
   const [themeDropdownOpen, setThemeDropdownOpen] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -90,6 +119,10 @@ const RecodePage = () => {
   const [activeGroup, setActiveGroup] = useState<UserGroupRow | null>(null);
   const [activeGroupKey, setActiveGroupKey] = useState<string | null>(null);
   const [groupDraftSelections, setGroupDraftSelections] = useState<Record<string, string[]>>({});
+
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [pendingSaveData, setPendingSaveData] = useState<formType | null>(null);
+  const [savingAfterConfirm, setSavingAfterConfirm] = useState(false);
 
   const {
     register,
@@ -175,9 +208,59 @@ const RecodePage = () => {
 
   const onSubmit: SubmitHandler<formType> = async (data) => {
     try {
+      const trimmedThemeName = data.themeName?.trim();
+      if (!trimmedThemeName) return;
+
+      const userName = user?.user_metadata?.full_name || user?.user_metadata?.name;
+
+      // record DB에서 동일 themename이 이미 있는지 확인
+      const { data: existing, error } = await supabase
+        .from('record')
+        .select('themename')
+        .eq('themename', trimmedThemeName)
+        .limit(1);
+
+      if (error) throw error;
+
+      // 이미 존재하면 확인 모달을 띄운다.
+      if (existing && existing.length > 0) {
+        setPendingSaveData(data);
+        setConfirmModalOpen(true);
+        return;
+      }
+
+      // 없으면 바로 저장
       await createRecord({
-        themeName: data.themeName,
+        themeName: trimmedThemeName,
         date: data.date,
+        genre: data.genre || undefined,
+        userName,
+        shopName: data.shopName || undefined,
+        price: data.price || undefined,
+        participants: data.participants || undefined,
+        partPersonCount:
+          Number(data.partPersonCount?.trim()) || parseParticipantCount(data.participants ?? ''),
+        recommendedPeople: data.recommendedPeople || undefined,
+        comment: data.comment || undefined,
+        commentPublic: data.commentPublic ?? false,
+        spoiler: data.spoiler || undefined,
+      });
+
+      alert('저장되었습니다.');
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '저장에 실패했습니다.');
+    }
+  };
+
+  const doSaveAfterConfirm = async (data: formType) => {
+    setSavingAfterConfirm(true);
+    try {
+      const userName = user?.user_metadata?.full_name || user?.user_metadata?.name;
+      await createRecord({
+        themeName: data.themeName?.trim() ?? '',
+        date: data.date,
+        genre: data.genre || undefined,
+        userName,
         shopName: data.shopName || undefined,
         price: data.price || undefined,
         participants: data.participants || undefined,
@@ -189,9 +272,11 @@ const RecodePage = () => {
         spoiler: data.spoiler || undefined,
       });
       alert('저장되었습니다.');
-      // 필요 시 폼 초기화: reset(defaultValues);
     } catch (e) {
       alert(e instanceof Error ? e.message : '저장에 실패했습니다.');
+    } finally {
+      setSavingAfterConfirm(false);
+      setPendingSaveData(null);
     }
   };
 
@@ -224,8 +309,10 @@ const RecodePage = () => {
     setActiveGroupKey(groupKey);
     setActiveGroup(row);
     setGroupDraftSelections((prev) => {
+      const existing = prev[groupKey];
+      if (existing) return prev;
       const memberNames = splitCsvNames(row.name ?? '');
-      const participantSet = new Set(splitCsvNames(participants ?? ''));
+      const participantSet = new Set(splitParticipantBaseNames(participants));
       const initialSelected = memberNames.filter((name) => participantSet.has(name));
       return { ...prev, [groupKey]: initialSelected };
     });
@@ -241,7 +328,10 @@ const RecodePage = () => {
     const groupMemberSet = new Set(splitCsvNames(groupMembersCsv));
     const selectedList = splitCsvNames(selectedCsv);
 
-    const withoutCurrentGroup = prevList.filter((name) => !groupMemberSet.has(name));
+    const withoutCurrentGroup = prevList.filter((token) => {
+      const base = normalizeParticipantToken(token);
+      return !groupMemberSet.has(base);
+    });
     const next = [...withoutCurrentGroup, ...selectedList];
     const uniq = Array.from(new Set(next));
     return uniq.join(', ');
@@ -316,11 +406,11 @@ const RecodePage = () => {
                       onChange={(value) => {
                         const d = value instanceof Date ? value : (value as Date[])?.[0];
                         if (d) {
-                          field.onChange(d.toISOString().slice(0, 10));
+                          field.onChange(formatLocalYmd(d));
                           setCalendarOpen(false);
                         }
                       }}
-                      value={field.value ? new Date(field.value) : null}
+                      value={field.value ? parseYmdToLocalDate(field.value) : null}
                       locale="ko-KR"
                     />
                   </div>
@@ -328,6 +418,12 @@ const RecodePage = () => {
               </div>
             )}
           />
+        </div>
+
+        {/* 장르 (선택) */}
+        <div>
+          <label className="block mb-1 text-sm font-medium text-zinc-700">장르</label>
+          <Input {...register('genre')} placeholder="예: 공포, 추리, 감성, 코믹..." />
         </div>
 
         {/* 매장명 (선택) - 테마 선택 시 shop_name 자동 채움 */}
@@ -375,7 +471,10 @@ const RecodePage = () => {
             <div className="flex flex-wrap gap-2 pt-1">
               {groups.map((g, idx) => {
                 const label = (g.group_name || `그룹 ${idx + 1}`).trim();
-                const hasAdded = groupHasMembersInParticipants(g.name, participants);
+                const groupKey = `${g.group_name ?? ''}__${g.name ?? ''}`;
+                const hasAdded =
+                  (groupDraftSelections[groupKey]?.length ?? 0) > 0 ||
+                  groupHasMembersInParticipants(g.name, participants);
                 return (
                   <button
                     key={`${label}-${idx}`}
@@ -464,10 +563,10 @@ const RecodePage = () => {
 
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || confirmModalOpen || savingAfterConfirm}
           className="w-full py-3 text-sm font-medium text-white transition rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50"
         >
-          {isSubmitting ? '저장 중...' : '저장'}
+          {savingAfterConfirm ? '저장 중...' : isSubmitting ? '저장 중...' : '저장'}
         </button>
       </form>
 
@@ -492,6 +591,26 @@ const RecodePage = () => {
             );
           }}
         />
+      )}
+
+      {confirmModalOpen && (
+        <ConfirmModal
+          setOnModal={setConfirmModalOpen}
+          dimClick={false}
+          title="이미 저장된 테마입니다. 다시 저장할까요?"
+          onConfirm={async () => {
+            if (!pendingSaveData) return;
+            await doSaveAfterConfirm(pendingSaveData);
+          }}
+          onCancel={() => {
+            setPendingSaveData(null);
+          }}
+        >
+          <div className="text-sm text-zinc-700">
+            같은 <span className="font-medium">테마명</span>이 이미 기록되어 있습니다.
+            확인을 누르면 저장이 진행되고, 취소하면 저장하지 않습니다.
+          </div>
+        </ConfirmModal>
       )}
     </div>
   );

@@ -15,7 +15,7 @@ const GroupSelectModal = ({
         onClose
         dimClick={false}
       >
-        <Modal.Title>멤버 선택</Modal.Title>
+        <Modal.Title>그룹 설정 모달</Modal.Title>
         {/* 상단 검색 바 */}
         <input type="text" placeholder="멤버 검색" />\
         {/* 멤버 먹록 */}

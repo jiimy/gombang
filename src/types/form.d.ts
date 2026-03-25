@@ -8,6 +8,7 @@
 interface formType {
   themeName: string;
   date: string;
+  genre?: string;
   shopName?: string;
   price?: string;
   participants?: string;

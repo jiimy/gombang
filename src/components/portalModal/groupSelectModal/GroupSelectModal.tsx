@@ -57,7 +57,7 @@ const GroupModal = ({
       dimClick={false}
       className="p-5 w-[min(520px,calc(100vw-32px))]"
     >
-      <Modal.Title>{groupName}</Modal.Title>
+      <Modal.Title>참여자 선택</Modal.Title>
       <div className="mt-4 space-y-3">
         <div className="text-sm text-zinc-600">멤버 선택 (콤마로 저장됩니다)</div>
 

@@ -524,7 +524,7 @@ const RecodePage = () => {
           <Controller
             name="commentPublic"
             control={control}
-            defaultValue={false}
+            defaultValue={true}
             render={({ field }) => (
               <div className="flex gap-4 mt-2">
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
@@ -534,7 +534,7 @@ const RecodePage = () => {
                     onChange={() => field.onChange(false)}
                     className="rounded-full border-zinc-300"
                   />
-                  비공개
+                  외부 공개
                 </label>
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
                   <input
@@ -543,7 +543,7 @@ const RecodePage = () => {
                     onChange={() => field.onChange(true)}
                     className="rounded-full border-zinc-300"
                   />
-                  외부 공개
+                  비공개
                 </label>
               </div>
             )}

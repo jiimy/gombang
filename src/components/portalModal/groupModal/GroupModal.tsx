@@ -3,8 +3,8 @@ import React from 'react';
 import ModalFrame from '../ModalFrame';
 import { Modal } from '../Modal';
 
-// 선택된 그룹의 멤버 목록을 보여주는 모달
-const GroupSelectModal = ({
+// 그룹 관리 모달
+const GroupModal = ({
   setOnModal,
 }: ExportModalType) => {
   return (
@@ -26,4 +26,4 @@ const GroupSelectModal = ({
   );
 };
 
-export default GroupSelectModal;
+export default GroupModal;

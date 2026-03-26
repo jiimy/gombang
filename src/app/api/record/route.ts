@@ -1,4 +1,4 @@
-import type { RecordRequestBody } from '@/api/record';
+import type { RecordRequestBody, UpdateRecordRequestBody } from '@/api/record';
 import { createServerSupabase } from '@/util/supabase/server';
 import { NextResponse } from 'next/server';
 
@@ -18,9 +18,11 @@ export async function POST(request: Request) {
       themeName,
       date,
       genre,
+      location,
       shopName,
       price,
       participants,
+      groupName,
       partPersonCount,
       recommendedPeople,
       comment,
@@ -34,9 +36,11 @@ export async function POST(request: Request) {
       themename: themeName ?? '',
       date: date ?? '',
       genre: genre ?? null,
+      location: location ?? null,
       shop_name: shopName ?? null,
       price: price ?? null,
       participant: participants ?? null,
+      group_name: groupName ?? null,
       part_person_count: partPersonCount ?? 0,
       recomm_person_count: recommendedPeople ?? null,
       comment: comment ?? null,
@@ -56,6 +60,78 @@ export async function POST(request: Request) {
     return NextResponse.json({ data }, { status: 201 });
   } catch (err) {
     console.error('record API error:', err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : '서버 오류' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const supabase = await createServerSupabase();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.user) {
+      return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+    }
+
+    const body = (await request.json()) as UpdateRecordRequestBody;
+    const {
+      id,
+      themeName,
+      date,
+      genre,
+      location,
+      shopName,
+      price,
+      participants,
+      groupName,
+      partPersonCount,
+      recommendedPeople,
+      comment,
+      commentPublic,
+      spoiler,
+    } = body;
+
+    if (!id || !themeName?.trim()) {
+      return NextResponse.json({ error: '잘못된 요청입니다.' }, { status: 400 });
+    }
+
+    const updateRow = {
+      themename: themeName.trim(),
+      date: date ?? '',
+      genre: genre ?? null,
+      location: location ?? null,
+      shop_name: shopName ?? null,
+      price: price ?? null,
+      participant: participants ?? null,
+      group_name: groupName ?? null,
+      part_person_count: partPersonCount ?? 0,
+      recomm_person_count: recommendedPeople ?? null,
+      comment: comment ?? null,
+      comment_public: commentPublic ?? false,
+      spoiler: spoiler ?? null,
+    };
+
+    const { data, error } = await supabase
+      .from('record')
+      .update(updateRow)
+      .eq('id', id)
+      .eq('email', session.user.email)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('record update error:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ data }, { status: 200 });
+  } catch (err) {
+    console.error('record PATCH API error:', err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : '서버 오류' },
       { status: 500 }

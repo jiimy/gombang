@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/util/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import RecordList from '@/components/recordList/RecordList';
 import type { SearchRecordRow } from '@/components/recordList/RecordItem';
+import Record from '@/components/record/Record';
 
 type Category = 'genre' | 'shop_name' | 'group_name';
 
@@ -26,35 +27,38 @@ const SearchPage = () => {
   const [selectedCategoryValue, setSelectedCategoryValue] = useState<string | null>(null);
   const [fetching, setFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [selectedRecord, setSelectedRecord] = useState<SearchRecordRow | null>(null);
+
+  const fetchMyRecords = useCallback(async () => {
+    if (!user?.email) {
+      setRecords([]);
+      return;
+    }
+
+    setFetching(true);
+    setFetchError(null);
+    try {
+      const { data, error } = await supabase
+        .from('record')
+        .select(
+          'id,date,themename,shop_name,participant,genre,group_name,location,price,part_person_count,recomm_person_count,comment,comment_public,spoiler'
+        )
+        .eq('email', user.email)
+        .order('id', { ascending: false });
+
+      if (error) throw error;
+      setRecords((data ?? []) as SearchRecordRow[]);
+    } catch (e) {
+      setRecords([]);
+      setFetchError(e instanceof Error ? e.message : '기록 조회에 실패했습니다.');
+    } finally {
+      setFetching(false);
+    }
+  }, [supabase, user?.email]);
 
   useEffect(() => {
-    const fetchMyRecords = async () => {
-      if (!user?.email) {
-        setRecords([]);
-        return;
-      }
-
-      setFetching(true);
-      setFetchError(null);
-      try {
-        const { data, error } = await supabase
-          .from('record')
-          .select('id,date,themename,shop_name,participant,genre,group_name')
-          .eq('email', user.email)
-          .order('id', { ascending: false });
-
-        if (error) throw error;
-        setRecords((data ?? []) as SearchRecordRow[]);
-      } catch (e) {
-        setRecords([]);
-        setFetchError(e instanceof Error ? e.message : '기록 조회에 실패했습니다.');
-      } finally {
-        setFetching(false);
-      }
-    };
-
     fetchMyRecords();
-  }, [supabase, user?.email]);
+  }, [fetchMyRecords]);
 
   const normalizedQuery = query.trim().toLowerCase();
 
@@ -105,6 +109,36 @@ const SearchPage = () => {
 
   if (!user) {
     return <div className="p-4 text-sm text-zinc-500">로그인이 필요합니다.</div>;
+  }
+
+  if (selectedRecord) {
+    return (
+      <Record
+        mode="edit"
+        recordId={selectedRecord.id}
+        initialValues={{
+          themeName: selectedRecord.themename ?? '',
+          date: selectedRecord.date ?? '',
+          genre: selectedRecord.genre ?? '',
+          location: selectedRecord.location ?? '',
+          shopName: selectedRecord.shop_name ?? '',
+          price: selectedRecord.price ?? '',
+          participants: selectedRecord.participant ?? '',
+          partPersonCount: selectedRecord.part_person_count
+            ? String(selectedRecord.part_person_count)
+            : '',
+          recommendedPeople: selectedRecord.recomm_person_count ?? '',
+          comment: selectedRecord.comment ?? '',
+          commentPublic: selectedRecord.comment_public ?? false,
+          spoiler: selectedRecord.spoiler ?? '',
+        }}
+        onSuccess={async () => {
+          await fetchMyRecords();
+          setSelectedRecord(null);
+        }}
+        onCancelEdit={() => setSelectedRecord(null)}
+      />
+    );
   }
 
   return (
@@ -184,7 +218,7 @@ const SearchPage = () => {
         ) : (
           <>
             <div className="mb-2 text-sm text-zinc-600">총 {filteredRecords.length}개</div>
-            <RecordList records={filteredRecords} />
+            <RecordList records={filteredRecords} onSelectRecord={setSelectedRecord} />
           </>
         )}
       </div>

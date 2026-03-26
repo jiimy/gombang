@@ -5,9 +5,10 @@ import RecordItem, { SearchRecordRow } from './RecordItem';
 
 type RecordListProps = {
   records: SearchRecordRow[];
+  onSelectRecord?: (record: SearchRecordRow) => void;
 };
 
-const RecordList = ({ records }: RecordListProps) => {
+const RecordList = ({ records, onSelectRecord }: RecordListProps) => {
   if (records.length === 0) {
     return <div className="text-sm text-zinc-500">조건에 맞는 기록이 없습니다.</div>;
   }
@@ -16,7 +17,7 @@ const RecordList = ({ records }: RecordListProps) => {
     <ul className="space-y-2">
       {records.map((record) => (
         <li key={record.id}>
-          <RecordItem record={record} />
+          <RecordItem record={record} onClick={() => onSelectRecord?.(record)} />
         </li>
       ))}
     </ul>

@@ -56,10 +56,10 @@ function splitParticipantCommaParts(participant: string | null): string[] {
 }
 
 /** `남 1`, `여 2` — 성별 뒤 공백 + 숫자만 있는 항목: 숫자만큼 기타에 합산 */
-const PARTICIPANT_GENDER_COUNT_SPACED = /^(남|여|단)\s+(\d+)$/;
+const PARTICIPANT_GENDER_COUNT_SPACED = /^(남|여|외부인원)\s+(\d+)$/;
 
 /** `남1`, `여2` — DB에 붙여 쓴 경우도 같은 규칙으로 합산 */
-const PARTICIPANT_GENDER_COUNT_COMPACT = /^(남|여|단)(\d+)$/;
+const PARTICIPANT_GENDER_COUNT_COMPACT = /^(남|여|외부인원)(\d+)$/;
 
 function addGenderEtcCount(etc: { n: number }, countStr: string) {
   const v = parseInt(countStr, 10);
@@ -253,7 +253,7 @@ const AnalysisPage = () => {
             <RecordPieSection title="참여 인원" data={partCountData} />
             <RecordPieSection title="그룹" data={groupData} />
             <RecordPieSection
-              title="참여자 (이름 외 남·여·단 뒤 인원 숫자는 기타에 합산)"
+              title="참여자 (이름 외 남·여·외부인원 뒤 인원 숫자는 기타에 합산)"
               data={participantData}
             />
             <RecordPieSection title="월별" data={monthData} />

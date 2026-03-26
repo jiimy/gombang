@@ -10,15 +10,27 @@ export type SearchRecordRow = {
   participant: string | null;
   genre: string | null;
   group_name: string | null;
+  location?: string | null;
+  price?: string | null;
+  part_person_count?: number | null;
+  recomm_person_count?: string | null;
+  comment?: string | null;
+  comment_public?: boolean | null;
+  spoiler?: string | null;
 };
 
 type RecordItemProps = {
   record: SearchRecordRow;
+  onClick?: () => void;
 };
 
-const RecordItem = ({ record }: RecordItemProps) => {
+const RecordItem = ({ record, onClick }: RecordItemProps) => {
   return (
-    <div className="p-3 bg-white border rounded-md border-zinc-200">
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full p-3 text-left bg-white border rounded-md border-zinc-200"
+    >
       <div className="font-semibold text-zinc-900">{record.themename ?? '-'}</div>
       <div className="mt-1 text-sm text-zinc-700">
         {(record.genre ?? '장르 없음')}
@@ -29,7 +41,7 @@ const RecordItem = ({ record }: RecordItemProps) => {
         {record.date ?? '-'}
         {record.participant ? ` · 참여자: ${record.participant}` : ''}
       </div>
-    </div>
+    </button>
   );
 };
 

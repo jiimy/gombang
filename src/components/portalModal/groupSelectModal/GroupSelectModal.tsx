@@ -18,7 +18,7 @@ type GroupModalProps = ExportModalType & {
   onSelectedNamesChange?: (names: string[]) => void;
 };
 
-const GroupModal = ({
+const GroupSelectModal = ({
   setOnModal,
   groupName,
   namesCsv,
@@ -104,8 +104,8 @@ const GroupModal = ({
           </button>
         </div>
       </div>
-    </ModalFrame>
+    </ModalFrame> 
   );
 };
 
-export default GroupModal;
+export default GroupSelectModal;

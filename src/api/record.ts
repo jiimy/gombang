@@ -1,17 +1,23 @@
 /** record 저장 API 요청 body */
 export type RecordRequestBody = {
   themeName: string;
-  date: string;
+  date?: string;
   genre?: string;
+  location?: string;
   shopName?: string;
   price?: string;
   participants?: string;
+  groupName?: string;
   partPersonCount: number;
   recommendedPeople?: string;
   comment?: string;
   commentPublic?: boolean;
   spoiler?: string;
   userName?: string;
+};
+
+export type UpdateRecordRequestBody = Omit<RecordRequestBody, 'userName'> & {
+  id: number;
 };
 
 export type PublicRecordRow = {
@@ -35,6 +41,22 @@ export async function createRecord(body: RecordRequestBody) {
 
   if (!res.ok) {
     throw new Error(typeof data?.error === 'string' ? data.error : '저장에 실패했습니다.');
+  }
+
+  return data as { data: unknown };
+}
+
+export async function updateRecord(body: UpdateRecordRequestBody) {
+  const res = await fetch('/api/record', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    throw new Error(typeof data?.error === 'string' ? data.error : '수정에 실패했습니다.');
   }
 
   return data as { data: unknown };

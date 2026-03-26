@@ -9,7 +9,7 @@ import s from './mypage.module.scss';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
-import GroupModal from '@/components/portalModal/groupSelectModal/GroupSelectModal';
+import GroupModal from '@/components/portalModal/groupModal/GroupModal';
 
 const MyPage = () => {
   const router = useRouter();
@@ -118,6 +118,10 @@ const MyPage = () => {
           </li>
         </ul>
       </div>
+      {
+        groupModalOpen &&
+        <GroupModal setOnModal={setGroupModalOpen} />
+      }
     </>
   );
 };

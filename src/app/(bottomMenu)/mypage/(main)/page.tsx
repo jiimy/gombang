@@ -98,6 +98,17 @@ const MyPage = () => {
             <button
               type="button"
               onClick={() => {
+                router.push('/mypage/share');
+              }}
+              className="text-blue-600 underline underline-offset-2 hover:text-blue-800"
+            >
+              공유하기로 이동
+            </button>
+          </li>
+          <li>
+            <button
+              type="button"
+              onClick={() => {
                 router.push('/mypage/search');
               }}
               className="text-blue-600 underline underline-offset-2 hover:text-blue-800"

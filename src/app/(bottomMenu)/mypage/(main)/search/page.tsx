@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import RecordList from '@/components/recordList/RecordList';
 import type { SearchRecordRow } from '@/components/recordList/RecordItem';
 import Record from '@/components/record/Record';
+import Loading from '@/components/loading/Loading';
 
 type Category = 'genre' | 'shop_name' | 'group_name';
 
@@ -105,6 +106,7 @@ const SearchPage = () => {
 
   if (loading) {
     return <div className="p-4 text-sm text-zinc-500">로딩 중...</div>;
+    // return <Loading />
   }
 
   if (!user) {
@@ -212,7 +214,8 @@ const SearchPage = () => {
 
       <div className="pt-2">
         {fetching ? (
-          <div className="text-sm text-zinc-500">기록 불러오는 중...</div>
+          // <div className="text-sm text-zinc-500">기록 불러오는 중...</div>
+          <Loading />
         ) : fetchError ? (
           <div className="text-sm text-red-500">{fetchError}</div>
         ) : (

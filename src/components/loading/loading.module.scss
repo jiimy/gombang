@@ -1,0 +1,33 @@
+// .loading {
+//   position: absolute;
+//   right: 0;
+//   top: 0;
+//   width: 100%;
+//   height: 100%;
+//   background: #fdfdfd;
+//   z-index: 1;
+// }
+
+.loading {
+  position: absolute;
+  right: 0;
+  left: 0;
+  width: 32px;
+  height: 32px;
+  margin: 20px auto;
+  border: 4px transparent solid;
+  border-top: 4px #a9aec1 solid;
+  border-radius: 50%;
+
+  animation: loadingG .6s infinite linear;
+}
+
+@keyframes loadingG {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(359deg);
+  }
+}

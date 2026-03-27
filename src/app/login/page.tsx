@@ -2,9 +2,10 @@
 
 import { createClient } from '@/util/supabase/client';
 import { Button } from '@/components/ui/button';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/header/Header';
+import Loading from '@/components/loading/Loading';
 
 const providers = [
   {
@@ -61,7 +62,7 @@ const providers = [
   },
 ] as const;
 
-export default function LoginPage() {
+function LoginPageContent() {
   const [loadingProvider, setLoadingProvider] = useState<'google' | 'github' | 'kakao' | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -167,5 +168,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <LoginPageContent />
+    </Suspense>
   );
 }

@@ -6,6 +6,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/header/Header';
 import Loading from '@/components/loading/Loading';
+import BottomMenu from '@/components/bottomMenu/BottomMenu';
 
 const providers = [
   {
@@ -166,6 +167,7 @@ function LoginPageContent() {
           ))}
         </div>
       </div>
+      <BottomMenu type="menu"/>
     </div>
   );
 }

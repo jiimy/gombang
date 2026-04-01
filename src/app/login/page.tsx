@@ -81,10 +81,15 @@ function LoginPageContent() {
     checkUser();
   }, [router, supabase]);
 
+  const baseUrl =
+  process.env.NODE_ENV === 'production'
+    ? process.env.NEXT_PUBLIC_URL
+    : 'http://localhost:3000';
+
   const handleSocialLogin = async (provider: 'google' | 'github' | 'kakao') => {
     try {
       setLoadingProvider(provider);
-      const redirectTo = new URL('/api/auth/callback', window.location.origin);
+      const redirectTo = new URL('/api/auth/callback', baseUrl);
       if (next !== '/') redirectTo.searchParams.set('next', next);
 
       const { data, error } = await supabase.auth.signInWithOAuth({

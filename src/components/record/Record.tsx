@@ -77,16 +77,6 @@ function splitParticipantBaseNames(participantsCsv: string | undefined): string[
   return splitCsvNames(participantsCsv ?? '').map(normalizeParticipantToken).filter(Boolean);
 }
 
-function groupHasMembersInParticipants(
-  groupNamesCsv: string | null | undefined,
-  participantsCsv: string | undefined
-): boolean {
-  const groupNames = splitCsvNames(groupNamesCsv ?? '');
-  if (groupNames.length === 0) return false;
-  const partSet = new Set(splitParticipantBaseNames(participantsCsv));
-  return groupNames.some((n) => partSet.has(n));
-}
-
 function deriveGroupNamesFromParticipants(
   groups: UserGroupRow[],
   participantsCsv: string | undefined
@@ -277,10 +267,7 @@ const Record = ({
     setGroupDraftSelections((prev) => {
       const existing = prev[groupKey];
       if (existing) return prev;
-      const memberNames = splitCsvNames(row.name ?? '');
-      const participantSet = new Set(splitParticipantBaseNames(participants));
-      const initialSelected = memberNames.filter((name) => participantSet.has(name));
-      return { ...prev, [groupKey]: initialSelected };
+      return { ...prev, [groupKey]: [] };
     });
     setGroupModalOpen(true);
   };
@@ -566,9 +553,7 @@ const Record = ({
               {groups.map((g, idx) => {
                 const label = (g.group_name || `그룹 ${idx + 1}`).trim();
                 const groupKey = `${g.group_name ?? ''}__${g.name ?? ''}`;
-                const hasAdded =
-                  (groupDraftSelections[groupKey]?.length ?? 0) > 0 ||
-                  groupHasMembersInParticipants(g.name, participants);
+                const hasAdded = (groupDraftSelections[groupKey]?.length ?? 0) > 0;
                 return (
                   <button
                     key={`${label}-${idx}`}

@@ -32,6 +32,7 @@
     "react-cookie": "^8.0.1",
     "react-dom": "19.2.0",
     "react-hook-form": "^7.68.0",
+    "react-intersection-observer": "^10.0.3",
     "react-toastify": "^11.0.5",
     "recharts": "^3.8.1",
     "sass": "^1.94.2",

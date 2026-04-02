@@ -16,6 +16,27 @@ const categoryLabel: Record<Category, string> = {
   group_name: '그룹',
 };
 
+/** DB의 genre 문자열을 콤마 기준으로 나누어 개별 장르 배열로 만듦 (예: "공포, 이머시브" → ["공포", "이머시브"]) */
+function splitGenres(genre: string | null | undefined): string[] {
+  if (!genre?.trim()) return [];
+  return genre
+    .split(',')
+    .map((g) => g.trim())
+    .filter(Boolean);
+}
+
+function rowMatchesCategorySelection(
+  cat: Category,
+  row: SearchRecordRow,
+  sel: string | null
+): boolean {
+  if (!sel) return true;
+  if (cat === 'genre') {
+    return splitGenres(row.genre).includes(sel);
+  }
+  return (row[cat] ?? '').trim() === sel;
+}
+
 const SearchPage = () => {
   const supabase = createClient();
   const { user, loading } = useAuth();
@@ -25,7 +46,11 @@ const SearchPage = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [activeCategory, setActiveCategory] = useState<Category>('genre');
-  const [selectedCategoryValue, setSelectedCategoryValue] = useState<string | null>(null);
+  const [selections, setSelections] = useState<Record<Category, string | null>>({
+    genre: null,
+    shop_name: null,
+    group_name: null,
+  });
   const [fetching, setFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<SearchRecordRow | null>(null);
@@ -83,26 +108,48 @@ const SearchPage = () => {
     });
   }, [records, startDate, endDate, normalizedQuery]);
 
+  /** 활성 탭 값 목록: 다른 카테고리에 선택이 있으면 그 조건을 만족하는 행만 반영 */
+  const recordsForCategoryOptions = useMemo(() => {
+    return baseFilteredRecords.filter((row) => {
+      for (const cat of (['genre', 'shop_name', 'group_name'] as Category[])) {
+        if (cat === activeCategory) continue;
+        const sel = selections[cat];
+        if (!rowMatchesCategorySelection(cat, row, sel)) return false;
+      }
+      return true;
+    });
+  }, [baseFilteredRecords, activeCategory, selections]);
+
   const categoryOptions = useMemo(() => {
     const unique = new Set<string>();
-    baseFilteredRecords.forEach((row) => {
-      const value = row[activeCategory];
-      if (value && value.trim()) unique.add(value.trim());
+    recordsForCategoryOptions.forEach((row) => {
+      if (activeCategory === 'genre') {
+        splitGenres(row.genre).forEach((g) => unique.add(g));
+      } else {
+        const value = row[activeCategory];
+        if (value?.trim()) unique.add(value.trim());
+      }
     });
     return Array.from(unique);
-  }, [baseFilteredRecords, activeCategory]);
+  }, [recordsForCategoryOptions, activeCategory]);
 
   useEffect(() => {
-    if (!selectedCategoryValue) return;
-    if (!categoryOptions.includes(selectedCategoryValue)) {
-      setSelectedCategoryValue(null);
+    const current = selections[activeCategory];
+    if (!current) return;
+    if (!categoryOptions.includes(current)) {
+      setSelections((prev) => ({ ...prev, [activeCategory]: null }));
     }
-  }, [categoryOptions, selectedCategoryValue]);
+  }, [categoryOptions, activeCategory, selections]);
 
   const filteredRecords = useMemo(() => {
-    if (!selectedCategoryValue) return baseFilteredRecords;
-    return baseFilteredRecords.filter((row) => (row[activeCategory] ?? '').trim() === selectedCategoryValue);
-  }, [baseFilteredRecords, activeCategory, selectedCategoryValue]);
+    return baseFilteredRecords.filter((row) => {
+      for (const cat of (['genre', 'shop_name', 'group_name'] as Category[])) {
+        const sel = selections[cat];
+        if (!rowMatchesCategorySelection(cat, row, sel)) return false;
+      }
+      return true;
+    });
+  }, [baseFilteredRecords, selections]);
 
   if (loading) {
     return <div className="p-4 text-sm text-zinc-500">로딩 중...</div>;
@@ -144,74 +191,88 @@ const SearchPage = () => {
   }
 
   return (
-    <div className="p-4 space-y-4">
-      <div className="space-y-2">
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="테마명, 매장, 참여자, 장르, 그룹 검색"
-          className="w-full h-10 px-3 text-sm bg-white border rounded-md border-zinc-300"
-        />
-        <div className="flex gap-2">
+    <div className="px-4 pb-4 space-y-4">
+      <div className="sticky top-0 flex flex-wrap items-center w-full gap-2 pt-[20px] bg-white">
+        <div className="space-y-2">
           <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="h-10 px-3 text-sm bg-white border rounded-md border-zinc-300"
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="테마명, 매장, 참여자, 장르, 그룹 검색"
+            className="w-full h-10 px-3 text-sm bg-white border rounded-md border-zinc-300"
           />
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="h-10 px-3 text-sm bg-white border rounded-md border-zinc-300"
-          />
+          <div className="flex gap-2">
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="h-10 px-3 text-sm bg-white border rounded-md border-zinc-300"
+            />
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="h-10 px-3 text-sm bg-white border rounded-md border-zinc-300"
+            />
+          </div>
         </div>
-      </div>
 
-      <div className="flex flex-wrap gap-2">
-        {(['genre', 'shop_name', 'group_name'] as Category[]).map((key) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => {
-              setActiveCategory(key);
-              setSelectedCategoryValue(null);
-            }}
-            className={
-              activeCategory === key
-                ? 'px-3 py-1 text-sm font-medium border rounded-full border-zinc-900 bg-zinc-900 text-white'
-                : 'px-3 py-1 text-sm border rounded-full border-zinc-300 bg-white text-zinc-700'
-            }
-          >
-            {categoryLabel[key]}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {categoryOptions.length === 0 ? (
-          <span className="text-sm text-zinc-500">선택 가능한 {categoryLabel[activeCategory]} 값이 없습니다.</span>
-        ) : (
-          categoryOptions.map((value) => (
+        <div className="flex flex-wrap gap-2">
+          {(['genre', 'shop_name', 'group_name'] as Category[]).map((key) => (
             <button
-              key={value}
+              key={key}
               type="button"
-              onClick={() =>
-                setSelectedCategoryValue((prev) => (prev === value ? null : value))
-              }
+              onClick={() => setActiveCategory(key)}
               className={
-                selectedCategoryValue === value
-                  ? 'px-3 py-1 text-sm font-medium border rounded-full border-emerald-700 bg-emerald-700 text-white'
-                  : 'px-3 py-1 text-sm border rounded-full border-emerald-300 bg-emerald-50 text-emerald-800'
+                activeCategory === key
+                  ? 'px-3 py-1 text-sm font-medium border rounded-full border-zinc-900 bg-zinc-900 text-white'
+                  : 'px-3 py-1 text-sm border rounded-full border-zinc-300 bg-white text-zinc-700'
               }
             >
-              {value}
+              {categoryLabel[key]}
             </button>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
 
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() =>
+              setSelections((prev) => ({ ...prev, [activeCategory]: null }))
+            }
+            className={
+              selections[activeCategory] === null
+                ? 'px-3 py-1 text-sm font-medium border rounded-full border-emerald-700 bg-emerald-700 text-white'
+                : 'px-3 py-1 text-sm border rounded-full border-emerald-300 bg-emerald-50 text-emerald-800'
+            }
+          >
+            전체
+          </button>
+          {categoryOptions.length === 0 ? (
+            <span className="text-sm text-zinc-500">선택 가능한 {categoryLabel[activeCategory]} 값이 없습니다.</span>
+          ) : (
+            categoryOptions.map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() =>
+                  setSelections((prev) => ({
+                    ...prev,
+                    [activeCategory]: prev[activeCategory] === value ? null : value,
+                  }))
+                }
+                className={
+                  selections[activeCategory] === value
+                    ? 'px-3 py-1 text-sm font-medium border rounded-full border-emerald-700 bg-emerald-700 text-white'
+                    : 'px-3 py-1 text-sm border rounded-full border-emerald-300 bg-emerald-50 text-emerald-800'
+                }
+              >
+                {value}
+              </button>
+            ))
+          )}
+        </div>
+      </div>
       <div className="pt-2">
         {fetching ? (
           // <div className="text-sm text-zinc-500">기록 불러오는 중...</div>

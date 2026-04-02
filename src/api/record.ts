@@ -1,3 +1,5 @@
+import axios from "axios";
+
 /** record 저장 API 요청 body */
 export type RecordRequestBody = {
   themeName: string;
@@ -62,18 +64,56 @@ export async function updateRecord(body: UpdateRecordRequestBody) {
   return data as { data: unknown };
 }
 
-// 공개 기록 회
-export async function fetchPublicRecords(limit: number = 20) {
-  const res = await fetch(`/api/record?limit=${limit}`, {
-    method: 'GET',
-    headers: { 'Content-Type': 'application/json' },
-  });
+// 공개 기록 조회
+// export async function fetchPublicRecords(limit: number = 20, keyword: string = '') {
+//   const params = new URLSearchParams({
+//     limit: String(limit),
+//   });
 
-  const data = (await res.json().catch(() => ({}))) as { data?: PublicRecordRow[]; error?: string };
+//   const trimmedKeyword = keyword.trim();
+//   if (trimmedKeyword) {
+//     params.set('q', trimmedKeyword);
+//   }
+//   console.log('params', params.toString(), )
 
-  if (!res.ok) {
-    throw new Error(typeof data?.error === 'string' ? data.error : '목록 조회에 실패했습니다.');
+//   const res = await fetch(`/api/record?${params.toString()}`, {
+//     method: 'GET',
+//     headers: { 'Content-Type': 'application/json' },
+//   });
+
+//   const data = (await res.json().catch(() => ({}))) as { data?: PublicRecordRow[]; error?: string };
+
+//   if (!res.ok) {
+//     throw new Error(typeof data?.error === 'string' ? data.error : '목록 조회에 실패했습니다.');
+//   }
+
+//   return (data.data ?? []) as PublicRecordRow[];
+// }
+
+export async function fetchPublicRecords(serachValue: string, pageParam: number, size: number) {
+  if (serachValue) {
+    try {
+      const res = await axios.get(
+        `/api/record?search=${serachValue}&page=${pageParam}&size=${size}`,
+      );
+
+      if (res.status === 200) {
+        return res.data.data;
+      }
+    } catch (error) {
+      console.error('Error fetching feed data:', error);
+      return [];
+    }
+  } else {
+    try {
+      const res = await axios.get(`/api/record?page=${pageParam}&size=${size}`);
+
+      if (res.status === 200) {
+        return res.data.data;
+      }
+    } catch (error) {
+      console.error('Error fetching feed data:', error);
+      return [];
+    }
   }
-
-  return (data.data ?? []) as PublicRecordRow[];
 }

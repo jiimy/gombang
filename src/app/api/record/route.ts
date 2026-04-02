@@ -1,6 +1,7 @@
 import type { RecordRequestBody, UpdateRecordRequestBody } from '@/api/record';
 import { createServerSupabase } from '@/util/supabase/server';
 import { NextResponse } from 'next/server';
+import { cookies } from "next/headers";
 
 export async function POST(request: Request) {
   try {
@@ -147,15 +148,26 @@ export async function GET(request: Request) {
     const supabase = await createServerSupabase();
     const { searchParams } = new URL(request.url);
 
-    const limit = Number(searchParams.get('limit') ?? 20);
-    const safeLimit = Number.isFinite(limit) ? Math.min(Math.max(limit, 1), 100) : 20;
+    const page = Number(searchParams.get('page') ?? 1);
+    const size = Number(searchParams.get('size') ?? 10);
+    const searchValue = (searchParams.get('search') ?? '').trim();
+    const startIndex = page == 0 ? 0 : (page - 1) * size;
+    const endIndex = startIndex + size - 1;
+    console.log('startIndex', startIndex, 'endIndex', endIndex);
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('record')
-      .select('date,recomm_person_count,comment,genre,themename,shop_name,user_name')
+      .select('id,date,recomm_person_count,comment,genre,themename,shop_name,user_name')
       .eq('comment_public', true)
-      .order('id', { ascending: false })
-      .limit(safeLimit);
+      .order('id', { ascending: true })
+      .range(startIndex, endIndex);
+
+    if (searchValue) {
+      const escapedSearchValue = searchValue.replace(/[%_]/g, (char) => `\\${char}`);
+      query = query.or(`themename.ilike.%${escapedSearchValue}%,user_name.ilike.%${escapedSearchValue}%,genre.ilike.%${escapedSearchValue}%`);
+    }
+
+    const { data, error } = await query
 
     if (error) {
       console.error('record public list error:', error);

@@ -9,6 +9,8 @@ import Record from '@/components/record/Record';
 import Loading from '@/components/loading/Loading';
 
 type Category = 'genre' | 'shop_name' | 'group_name';
+type SortKey = 'date' | 'participants' | 'theme';
+type SortDirection = 'asc' | 'desc';
 
 const categoryLabel: Record<Category, string> = {
   genre: '장르',
@@ -51,9 +53,25 @@ const SearchPage = () => {
     shop_name: null,
     group_name: null,
   });
+  const [sortKey, setSortKey] = useState<SortKey>('date');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [fetching, setFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<SearchRecordRow | null>(null);
+
+  const handleSortClick = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+
+    setSortKey(key);
+    if (key === 'date') {
+      setSortDirection('desc');
+    } else {
+      setSortDirection('asc');
+    }
+  };
 
   const fetchMyRecords = useCallback(async () => {
     if (!user?.email) {
@@ -151,6 +169,23 @@ const SearchPage = () => {
     });
   }, [baseFilteredRecords, selections]);
 
+  const sortedRecords = useMemo(() => {
+    const rows = [...filteredRecords];
+    rows.sort((a, b) => {
+      if (sortKey === 'date') {
+        const compared = (a.date ?? '').localeCompare(b.date ?? '');
+        return sortDirection === 'asc' ? compared : -compared;
+      }
+      if (sortKey === 'participants') {
+        const compared = (a.part_person_count ?? 0) - (b.part_person_count ?? 0);
+        return sortDirection === 'asc' ? compared : -compared;
+      }
+      const compared = (a.themename ?? '').localeCompare(b.themename ?? '', 'ko');
+      return sortDirection === 'asc' ? compared : -compared;
+    });
+    return rows;
+  }, [filteredRecords, sortKey, sortDirection]);
+
   if (loading) {
     return <div className="p-4 text-sm text-zinc-500">로딩 중...</div>;
     // return <Loading />
@@ -192,7 +227,7 @@ const SearchPage = () => {
 
   return (
     <div className="px-4 pb-4 space-y-4">
-      <div className="sticky top-0 flex flex-wrap items-center w-full gap-2 pt-[20px] bg-white">
+      <div className="sticky top-0 flex flex-wrap items-center w-full gap-2 pt-[20px] bg-white pb-[20px]">
         <div className="space-y-2">
           <input
             type="text"
@@ -214,6 +249,32 @@ const SearchPage = () => {
               onChange={(e) => setEndDate(e.target.value)}
               className="h-10 px-3 text-sm bg-white border rounded-md border-zinc-300"
             />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {(
+              [
+                { key: 'date', label: '날짜' },
+                { key: 'participants', label: '참여인원' },
+                { key: 'theme', label: '테마명' },
+              ] as { key: SortKey; label: string }[]
+            ).map(({ key, label }) => {
+              const isActive = sortKey === key;
+              const arrow = isActive ? (sortDirection === 'asc' ? '↑' : '↓') : '';
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => handleSortClick(key)}
+                  className={
+                    isActive
+                      ? 'px-3 py-1 text-sm font-medium border rounded-full border-blue-700 bg-blue-700 text-white'
+                      : 'px-3 py-1 text-sm border rounded-full border-blue-300 bg-blue-50 text-blue-800'
+                  }
+                >
+                  {label} {arrow}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -281,8 +342,8 @@ const SearchPage = () => {
           <div className="text-sm text-red-500">{fetchError}</div>
         ) : (
           <>
-            <div className="mb-2 text-sm text-zinc-600">총 {filteredRecords.length}개</div>
-            <RecordList records={filteredRecords} onSelectRecord={setSelectedRecord} />
+            <div className="mb-2 text-sm text-zinc-600">총 {sortedRecords.length}개</div>
+            <RecordList records={sortedRecords} onSelectRecord={setSelectedRecord} />
           </>
         )}
       </div>

@@ -83,7 +83,7 @@ function LoginPageContent() {
 
   const baseUrl =
   process.env.NODE_ENV === 'production'
-    ? process.env.NEXT_PUBLIC_URL
+    ? process.env.NEXT_PUBLIC_SITE_URL
     : 'http://localhost:3000';
 
   const handleSocialLogin = async (provider: 'google' | 'github' | 'kakao') => {

@@ -20,13 +20,13 @@ type GroupModalProps = ExportModalType & {
 
 const GroupSelectModal = ({
   setOnModal,
-  groupName,
   namesCsv,
   onConfirm,
   selectedNames,
   onSelectedNamesChange,
 }: GroupModalProps) => {
-  const allNames = useMemo(() => splitCsv(namesCsv), [namesCsv]);
+  const allNames = useMemo(() => 
+    (splitCsv(namesCsv)), [namesCsv]).sort((a, b) => a.localeCompare(b, 'ko-KR'));
   const [internalSelected, setInternalSelected] = useState<string[]>([]);
   const selected = selectedNames ?? internalSelected;
 

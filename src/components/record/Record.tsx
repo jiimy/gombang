@@ -493,7 +493,7 @@ const Record = ({
             onFocus={openDatePicker}
             className="cursor-pointer [&::-webkit-calendar-picker-indicator]:cursor-pointer"
           />
-          <label className="inline-flex items-center gap-2 mt-2 text-sm text-zinc-700 cursor-pointer">
+          <label className="inline-flex items-center gap-2 mt-2 text-sm cursor-pointer text-zinc-700">
             <input
               type="checkbox"
               checked={includeTime}

@@ -4,7 +4,7 @@ import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse, In
 import { useRouter } from "next/navigation";
 
 const apiInstance = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_URL,
+  baseURL: process.env.NEXT_PUBLIC_SITE_URL,
   timeout: 5000,
 });
 

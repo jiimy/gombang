@@ -7,6 +7,7 @@ import RecordList from '@/components/recordList/RecordList';
 import type { SearchRecordRow } from '@/components/recordList/RecordItem';
 import Record from '@/components/record/Record';
 import Loading from '@/components/loading/Loading';
+import SharedModal from '@/components/portalModal/sharedModal/SharedModal';
 
 type Category = 'genre' | 'shop_name' | 'group_name';
 type SortKey = 'date' | 'participants' | 'theme';
@@ -58,6 +59,7 @@ const SearchPage = () => {
   const [fetching, setFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<SearchRecordRow | null>(null);
+  const [sharedModalOpen, setSharedModalOpen] = useState(false);
 
   const handleSortClick = (key: SortKey) => {
     if (sortKey === key) {
@@ -228,6 +230,15 @@ const SearchPage = () => {
   return (
     <div className="px-4 pb-4 space-y-4">
       <div className="sticky top-0 flex flex-wrap items-center w-full gap-2 pt-[20px] bg-white pb-[20px]">
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setSharedModalOpen(true)}
+            className="px-3 py-1.5 text-sm border rounded-md border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-50"
+          >
+            공유 URL
+          </button>
+        </div>
         <div className="space-y-2">
           <input
             type="text"
@@ -347,6 +358,7 @@ const SearchPage = () => {
           </>
         )}
       </div>
+      {sharedModalOpen ? <SharedModal setOnModal={setSharedModalOpen} /> : null}
     </div>
   );
 };

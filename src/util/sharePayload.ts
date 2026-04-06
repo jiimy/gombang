@@ -1,4 +1,11 @@
 import type { SearchRecordRow } from '@/components/recordList/RecordItem';
+import type { User } from '@supabase/supabase-js';
+
+/** ShareModal·shared_record 저장 시 동일 규칙의 표시용 닉네임 */
+export function getSharerNicknameFromUser(user: User | null | undefined): string {
+  const meta = user?.user_metadata as { full_name?: string; name?: string } | undefined;
+  return (meta?.full_name || meta?.name || user?.email?.split('@')[0] || 'user').trim() || 'user';
+}
 
 export type ShareFieldKey =
   | 'genre'

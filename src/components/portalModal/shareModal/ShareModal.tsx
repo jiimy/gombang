@@ -13,6 +13,7 @@ import {
   buildShareRecordsPayload,
   commentSelectKey,
   filterRecordsForShare,
+  getSharerNicknameFromUser,
   randomShareHash,
   safeSharePathNickname,
   spoilerSelectKey,
@@ -181,10 +182,7 @@ const ShareModal = ({ setOnModal }: ExportModalType) => {
 
   const { enabled, selections } = pick;
 
-  const sharerNickname = useMemo(() => {
-    const meta = user?.user_metadata as { full_name?: string; name?: string } | undefined;
-    return (meta?.full_name || meta?.name || user?.email?.split('@')[0] || 'user').trim() || 'user';
-  }, [user]);
+  const sharerNickname = useMemo(() => getSharerNicknameFromUser(user), [user]);
 
   const options = useMemo(() => deriveOptions(records), [records]);
   const commentAddonOpts = useMemo(() => deriveAddonCommentOptions(records), [records]);

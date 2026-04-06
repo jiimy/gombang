@@ -13,9 +13,12 @@
   left: 0;
   right: 0;
   margin: auto;
-  min-width: auto;
-  width: fit-content;
+  width: 700px;
+  // width: fit-content;
   height: fit-content;
+  // @include media-mo () {
+  //   width: calc(100% - 40px);
+  // }
 }
 .modal_content {
   display: flex;

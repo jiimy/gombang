@@ -10,11 +10,13 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import GroupModal from '@/components/portalModal/groupModal/GroupModal';
+import ShareModal from '@/components/portalModal/shareModal/ShareModal';
 
 const MyPage = () => {
   const router = useRouter();
   const { user, loading, signOut } = useAuth();
   const [groupModalOpen, setGroupModalOpen] = useState<boolean>(false);
+  const [shareModalOpen, setShareModalOpen] = useState<boolean>(false);
   // const { data } = useQuery({
   //   queryFn: () => myYoutubeUplaodApi(),
   //   queryKey: ['myYoutubeUpload']
@@ -98,11 +100,11 @@ const MyPage = () => {
             <button
               type="button"
               onClick={() => {
-                router.push('/mypage/share');
+                setShareModalOpen(true);
               }}
               className="text-blue-600 underline underline-offset-2 hover:text-blue-800"
             >
-              공유하기로 이동
+              공유하기 모달
             </button>
           </li>
           <li>
@@ -132,6 +134,10 @@ const MyPage = () => {
       {
         groupModalOpen &&
         <GroupModal setOnModal={setGroupModalOpen} />
+      }
+      {
+        shareModalOpen &&
+        <ShareModal setOnModal={setShareModalOpen} />
       }
     </>
   );

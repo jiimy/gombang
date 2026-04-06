@@ -6,6 +6,14 @@ const nextConfig: NextConfig = {
   images: {
     domains: ['lh3.googleusercontent.com'],
   },
+  async rewrites() {
+    return [
+      {
+        source: '/@:nickname/:hash',
+        destination: '/share/:nickname/:hash',
+      },
+    ];
+  },
 };
 
 export default nextConfig;

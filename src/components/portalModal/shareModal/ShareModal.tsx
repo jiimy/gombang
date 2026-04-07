@@ -59,6 +59,95 @@ function labelForOption(value: string): string {
   return value || '(빈 값)';
 }
 
+function parseShareDateForUi(dateStr: string): Date | null {
+  const t = dateStr.trim();
+  if (!t) return null;
+  const isoDay = t.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoDay) {
+    const y = Number(isoDay[1]);
+    const mo = Number(isoDay[2]);
+    const d = Number(isoDay[3]);
+    const dt = new Date(y, mo - 1, d);
+    if (dt.getFullYear() === y && dt.getMonth() === mo - 1 && dt.getDate() === d) return dt;
+  }
+  const dt = new Date(t);
+  return Number.isNaN(dt.getTime()) ? null : dt;
+}
+
+function monthKeyFromDateOption(dateStr: string): string {
+  const dt = parseShareDateForUi(dateStr);
+  if (!dt) return '_other';
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth() + 1).padStart(2, '0');
+  return `${y}-${m}`;
+}
+
+function formatMonthHeading(monthKey: string): string {
+  if (monthKey === '_other') return '날짜 형식 기타';
+  const [y, m] = monthKey.split('-');
+  if (!y || !m) return monthKey;
+  return `${y}년 ${Number(m)}월`;
+}
+
+function dateLabelWithWeekday(value: string): string {
+  const base = labelForOption(value);
+  const dt = parseShareDateForUi(value);
+  if (!dt) return base;
+  const w = ['일', '월', '화', '수', '목', '금', '토'][dt.getDay()];
+  return w ? `${base} (${w})` : base;
+}
+
+function groupDateOptsByMonth(sortedDateOpts: string[]): { monthKey: string; dates: string[] }[] {
+  const map = new Map<string, string[]>();
+  for (const d of sortedDateOpts) {
+    const k = monthKeyFromDateOption(d);
+    const arr = map.get(k);
+    if (arr) arr.push(d);
+    else map.set(k, [d]);
+  }
+  const monthKeys = Array.from(map.keys()).sort((a, b) => {
+    if (a === '_other') return 1;
+    if (b === '_other') return -1;
+    return b.localeCompare(a, 'ko-KR', { numeric: true });
+  });
+  return monthKeys.map((monthKey) => ({ monthKey, dates: map.get(monthKey)! }));
+}
+
+function MonthGroupCheckbox({
+  monthKey,
+  monthDates,
+  selected,
+  onToggle,
+}: {
+  monthKey: string;
+  monthDates: string[];
+  selected: string[];
+  onToggle: () => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  const selSet = useMemo(() => new Set(selected), [selected]);
+  const allSelected = monthDates.length > 0 && monthDates.every((d) => selSet.has(d));
+  const someOnly = monthDates.some((d) => selSet.has(d)) && !allSelected;
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.indeterminate = someOnly;
+  }, [someOnly]);
+
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      checked={allSelected}
+      onChange={onToggle}
+      className="mt-0.5 shrink-0"
+      title="이 달 전체"
+      aria-label={`${formatMonthHeading(monthKey)} 전체 선택`}
+    />
+  );
+}
+
 function truncateSnippet(text: string, max = 72): string {
   if (text.length <= max) return text;
   return `${text.slice(0, max)}…`;
@@ -350,6 +439,20 @@ const ShareModal = ({ setOnModal }: ExportModalType) => {
     });
   };
 
+  const toggleDateMonth = (monthDates: string[]) => {
+    setPick((prev) => {
+      const cur = prev.selections.date;
+      const allOn = monthDates.length > 0 && monthDates.every((d) => cur.includes(d));
+      const nextArr = allOn
+        ? cur.filter((d) => !monthDates.includes(d))
+        : uniqueSorted([...cur, ...monthDates]);
+      return {
+        ...prev,
+        selections: { ...prev.selections, date: nextArr },
+      };
+    });
+  };
+
   const copyLink = async () => {
     try {
       setSaveError(null);
@@ -357,6 +460,7 @@ const ShareModal = ({ setOnModal }: ExportModalType) => {
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
+      alert('링크가 복사되었습니다.');
     } catch (e) {
       const msg = e instanceof Error ? e.message : '복사에 실패했습니다.';
       setSaveError(msg);
@@ -370,7 +474,6 @@ const ShareModal = ({ setOnModal }: ExportModalType) => {
       isDim={true}
       onClose
       dimClick={false}
-      className="p-5 w-[min(520px,calc(100vw-32px))] max-h-[90vh] flex flex-col"
     >
       <Modal.Title>공유할 항목 선택</Modal.Title>
 
@@ -437,64 +540,134 @@ const ShareModal = ({ setOnModal }: ExportModalType) => {
                     )}
 
                     {on && optCount > 0 && (
-                      <div className="mt-2 overflow-auto bg-white border rounded max-h-36 border-zinc-100">
-                        <SectionSelectAllCheckbox
-                          allOptions={opts}
-                          selected={selections[key]}
-                          onToggleAll={() => {
-                            setPick((prev) => {
-                              const cur = prev.selections[key];
-                              const allOn = arraysEqualAsSets(opts, cur);
-                              return {
-                                ...prev,
-                                selections: {
-                                  ...prev.selections,
-                                  [key]: allOn ? [] : [...opts],
-                                },
-                              };
-                            });
-                          }}
-                        />
-                        <ul className="divide-y divide-zinc-100">
-                          {addonRows
-                            ? addonRows.map((row) => {
-                                const checked = selections[key].includes(row.key);
-                                return (
-                                  <li key={row.key} className="px-2 py-1.5">
+                      key === 'date' ? (
+                        <div className="flex flex-col mt-2 overflow-hidden bg-white border rounded max-h-72 min-h-0 border-zinc-100">
+                          <SectionSelectAllCheckbox
+                            allOptions={opts}
+                            selected={selections[key]}
+                            onToggleAll={() => {
+                              setPick((prev) => {
+                                const cur = prev.selections[key];
+                                const allOn = arraysEqualAsSets(opts, cur);
+                                return {
+                                  ...prev,
+                                  selections: {
+                                    ...prev.selections,
+                                    [key]: allOn ? [] : [...opts],
+                                  },
+                                };
+                              });
+                            }}
+                          />
+                          <div className="flex flex-1 min-h-0 divide-x divide-zinc-100">
+                            <div className="flex flex-col w-[38%] max-w-[12.5rem] shrink-0 min-h-0">
+                              <div className="px-2 py-1.5 text-[11px] font-semibold tracking-wide border-b text-zinc-600 border-zinc-100 bg-zinc-50/90 shrink-0">
+                                월별
+                              </div>
+                              <ul className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden divide-y divide-zinc-100">
+                                {groupDateOptsByMonth(opts).map(({ monthKey, dates }) => (
+                                  <li key={`date-month-${monthKey}`} className="px-2 py-1.5">
                                     <label className="flex items-start gap-2 text-xs cursor-pointer select-none text-zinc-800">
-                                      <input
-                                        type="checkbox"
-                                        className="mt-0.5 shrink-0"
-                                        checked={checked}
-                                        onChange={() => toggleOption(key, row.key)}
+                                      <MonthGroupCheckbox
+                                        monthKey={monthKey}
+                                        monthDates={dates}
+                                        selected={selections.date}
+                                        onToggle={() => toggleDateMonth(dates)}
                                       />
-                                      <span>
-                                        <span className="font-semibold text-zinc-900">{row.themename}</span>
-                                        <span className="text-zinc-400"> · </span>
-                                        <span>{truncateSnippet(row.text)}</span>
+                                      <span className="min-w-0 leading-snug">
+                                        <span className="font-semibold text-zinc-900">{formatMonthHeading(monthKey)}</span>
+                                        <span className="text-zinc-500"> ({dates.length})</span>
                                       </span>
                                     </label>
                                   </li>
-                                );
-                              })
-                            : opts.map((val) => {
-                                const checked = selections[key].includes(val);
-                                return (
-                                  <li key={`${key}-${val}`} className="px-2 py-1.5">
-                                    <label className="flex items-start gap-2 text-xs cursor-pointer select-none text-zinc-800">
-                                      <input
-                                        type="checkbox"
-                                        className="mt-0.5"
-                                        checked={checked}
-                                        onChange={() => toggleOption(key, val)}
-                                      />
-                                      <span>{labelForOption(val)}</span>
-                                    </label>
-                                  </li>
-                                );
-                              })}
-                        </ul>
-                      </div>
+                                ))}
+                              </ul>
+                            </div>
+                            <div className="flex flex-col flex-1 min-w-0 min-h-0">
+                              <div className="px-2 py-1.5 text-[11px] font-semibold tracking-wide border-b text-zinc-600 border-zinc-100 bg-zinc-50/90 shrink-0">
+                                요일·일자
+                              </div>
+                              <ul className="flex-1 min-h-0 overflow-y-auto divide-y divide-zinc-100">
+                                {opts.map((val) => {
+                                  const checked = selections[key].includes(val);
+                                  return (
+                                    <li key={`${key}-${val}`} className="px-2 py-1.5">
+                                      <label className="flex items-start gap-2 text-xs cursor-pointer select-none text-zinc-800">
+                                        <input
+                                          type="checkbox"
+                                          className="mt-0.5 shrink-0"
+                                          checked={checked}
+                                          onChange={() => toggleOption(key, val)}
+                                        />
+                                        <span>{dateLabelWithWeekday(val)}</span>
+                                      </label>
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-2 overflow-auto bg-white border rounded max-h-36 border-zinc-100">
+                          <SectionSelectAllCheckbox
+                            allOptions={opts}
+                            selected={selections[key]}
+                            onToggleAll={() => {
+                              setPick((prev) => {
+                                const cur = prev.selections[key];
+                                const allOn = arraysEqualAsSets(opts, cur);
+                                return {
+                                  ...prev,
+                                  selections: {
+                                    ...prev.selections,
+                                    [key]: allOn ? [] : [...opts],
+                                  },
+                                };
+                              });
+                            }}
+                          />
+                          <ul className="divide-y divide-zinc-100">
+                            {addonRows
+                              ? addonRows.map((row) => {
+                                  const checked = selections[key].includes(row.key);
+                                  return (
+                                    <li key={row.key} className="px-2 py-1.5">
+                                      <label className="flex items-start gap-2 text-xs cursor-pointer select-none text-zinc-800">
+                                        <input
+                                          type="checkbox"
+                                          className="mt-0.5 shrink-0"
+                                          checked={checked}
+                                          onChange={() => toggleOption(key, row.key)}
+                                        />
+                                        <span>
+                                          <span className="font-semibold text-zinc-900">{row.themename}</span>
+                                          <span className="text-zinc-400"> · </span>
+                                          <span>{truncateSnippet(row.text)}</span>
+                                        </span>
+                                      </label>
+                                    </li>
+                                  );
+                                })
+                              : opts.map((val) => {
+                                  const checked = selections[key].includes(val);
+                                  return (
+                                    <li key={`${key}-${val}`} className="px-2 py-1.5">
+                                      <label className="flex items-start gap-2 text-xs cursor-pointer select-none text-zinc-800">
+                                        <input
+                                          type="checkbox"
+                                          className="mt-0.5"
+                                          checked={checked}
+                                          onChange={() => toggleOption(key, val)}
+                                        />
+                                        <span>{labelForOption(val)}</span>
+                                      </label>
+                                    </li>
+                                  );
+                                })}
+                          </ul>
+                        </div>
+                      )
                     )}
                   </div>
                 );

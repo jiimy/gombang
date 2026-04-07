@@ -4,6 +4,7 @@ import { ExportModalType } from '@/types/modal';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import ModalFrame from '../ModalFrame';
 import { Modal } from '../Modal';
+import s from './sharedmodal.module.scss';
 import { useAuth } from '@/hooks/useAuth';
 import {
   SHARE_FIELD_LABEL,
@@ -142,6 +143,14 @@ const SharedModal = ({ setOnModal }: ExportModalType) => {
 
   const removeLink = async (hash: string) => {
     if (!window.confirm('이 공유 링크를 삭제할까요?')) return;
+    if (deletingHash) return;
+    setError(null);
+
+    let previousLinks: MineLink[] = [];
+    setLinks((prev) => {
+      previousLinks = prev;
+      return prev.filter((item) => item.link_hash !== hash);
+    });
     setDeletingHash(hash);
     try {
       const res = await fetch(`/api/shared-record?hash=${encodeURIComponent(hash)}`, {
@@ -152,8 +161,8 @@ const SharedModal = ({ setOnModal }: ExportModalType) => {
       if (!res.ok) {
         throw new Error(typeof j.error === 'string' ? j.error : '삭제에 실패했습니다.');
       }
-      await load();
     } catch (e) {
+      setLinks(previousLinks);
       setError(e instanceof Error ? e.message : '삭제에 실패했습니다.');
     } finally {
       setDeletingHash(null);
@@ -166,10 +175,9 @@ const SharedModal = ({ setOnModal }: ExportModalType) => {
       isDim={true}
       onClose
       dimClick={false}
-      className="p-5 w-[min(560px,calc(100vw-32px))] max-h-[min(90vh,calc(100vh-32px))] overflow-hidden flex flex-col"
     >
       <Modal.Title>내 공유 URL</Modal.Title>
-      <div className="flex flex-col flex-1 min-h-0 mt-4 gap-3">
+      <div className="min-h-0 mt-4">
         {!user ? (
           <div className="py-8 text-sm text-center text-zinc-500">로그인이 필요합니다.</div>
         ) : loading ? (
@@ -181,12 +189,11 @@ const SharedModal = ({ setOnModal }: ExportModalType) => {
             저장된 공유 링크가 없습니다. 기록 공유 화면에서 링크를 만들면 여기에 표시됩니다.
           </div>
         ) : (
-          <div className="flex-1 min-h-0 overflow-y-auto pr-0.5 -mr-0.5 space-y-0">
-            {links.map((item, i) => (
+          <div className={s.list_group}>
+            {links.map((item) => (
               <div key={item.link_hash}>
-                {i > 0 ? <hr className="my-4 border-zinc-200" /> : null}
                 <div className="space-y-3">
-                  <div className="flex flex-wrap items-start gap-2 text-sm">
+                  <div className="flex flex-wrap items-end gap-2 text-sm">
                     <div className="flex-1 min-w-[140px] space-y-1">
                       <div className="text-xs text-zinc-500">생성</div>
                       <div className="font-medium text-zinc-800">{formatShareCreatedAt(item.created_at)}</div>
@@ -200,7 +207,7 @@ const SharedModal = ({ setOnModal }: ExportModalType) => {
                     <div className="flex flex-wrap items-center gap-2 shrink-0">
                       <button
                         type="button"
-                        className="h-9 px-3 text-xs text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+                        className="px-3 text-xs text-white bg-blue-600 rounded-md h-9 hover:bg-blue-700 disabled:opacity-50"
                         disabled={deletingHash === item.link_hash}
                         onClick={() => void copyLink(item.link_hash)}
                       >
@@ -208,8 +215,8 @@ const SharedModal = ({ setOnModal }: ExportModalType) => {
                       </button>
                       <button
                         type="button"
-                        className="h-9 px-3 text-xs border rounded-md border-red-200 text-red-700 bg-red-50 hover:bg-red-100 disabled:opacity-50"
-                        disabled={deletingHash === item.link_hash}
+                        className="px-3 text-xs text-red-700 border border-red-200 rounded-md h-9 bg-red-50 hover:bg-red-100 disabled:opacity-50"
+                        disabled={deletingHash !== null}
                         onClick={() => void removeLink(item.link_hash)}
                       >
                         {deletingHash === item.link_hash ? '삭제 중…' : '삭제'}
@@ -217,8 +224,8 @@ const SharedModal = ({ setOnModal }: ExportModalType) => {
                     </div>
                   </div>
                   <div>
-                    <div className="mb-1 text-xs font-medium text-zinc-600">공유 내용</div>
-                    <div className="overflow-auto max-h-48 bg-white border rounded-md border-zinc-200">
+                    <div className="mb-1 text-xs font-medium text-zinc-600">공유 내용 <span className="text-zinc-400">({item.records.length})</span></div>
+                    <div className="overflow-auto bg-white border rounded-md max-h-48 border-zinc-200">
                       {item.records.length === 0 ? (
                         <div className="p-3 text-xs text-zinc-500">항목 없음</div>
                       ) : (
@@ -236,7 +243,7 @@ const SharedModal = ({ setOnModal }: ExportModalType) => {
           </div>
         )}
       </div>
-      <div className="flex justify-end gap-2 pt-3 mt-2 border-t border-zinc-100">
+      <div className="flex justify-end gap-2 pt-3 mt-2">
         <button
           type="button"
           className="h-10 px-4 text-sm border rounded-md border-zinc-200 text-zinc-700 hover:bg-zinc-50"

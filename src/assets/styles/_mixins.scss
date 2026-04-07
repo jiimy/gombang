@@ -1,3 +1,11 @@
+$mobile: 768;
+
+@mixin media-mo() {
+  @media (max-width: #{$mobile}px) {
+    @content;
+  }
+}
+
 @mixin dotdotdot($font-size: 14, $lines-to-show: 1, $line-height: 1.5) {
   display: block;
   /* Fallback for non-webkit */
@@ -41,3 +49,5 @@
     display: none;
   }
 }
+
+

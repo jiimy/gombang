@@ -1,11 +1,16 @@
-import type { NextConfig } from "next";
-
+import type { NextConfig } from 'next';
 const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
   images: {
     domains: ['lh3.googleusercontent.com'],
   },
+  sassOptions: {
+  additionalData: `
+    @use "@/assets/styles/mixins" as *;
+    @use "@/assets/styles/variables" as *;
+  `,
+},
   async rewrites() {
     return [
       {
@@ -17,6 +22,3 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
-
-
-

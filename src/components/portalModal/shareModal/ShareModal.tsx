@@ -273,9 +273,26 @@ const ShareModal = ({ setOnModal }: ExportModalType) => {
 
   const sharerNickname = useMemo(() => getSharerNicknameFromUser(user), [user]);
 
-  const options = useMemo(() => deriveOptions(records), [records]);
-  const commentAddonOpts = useMemo(() => deriveAddonCommentOptions(records), [records]);
-  const spoilerAddonOpts = useMemo(() => deriveAddonSpoilerOptions(records), [records]);
+  const allOptions = useMemo(() => deriveOptions(records), [records]);
+
+  const genreScopedRecords = useMemo(() => {
+    if (!enabled.genre || selections.genre.length === 0) return records;
+    const selectedGenres = new Set(selections.genre);
+    return records.filter((r) => splitGenres(r.genre).some((g) => selectedGenres.has(g)));
+  }, [records, enabled.genre, selections.genre]);
+
+  const options = useMemo(() => {
+    const scoped = deriveOptions(genreScopedRecords);
+    return { ...scoped, genre: allOptions.genre };
+  }, [genreScopedRecords, allOptions.genre]);
+  const commentAddonOpts = useMemo(
+    () => deriveAddonCommentOptions(genreScopedRecords),
+    [genreScopedRecords],
+  );
+  const spoilerAddonOpts = useMemo(
+    () => deriveAddonSpoilerOptions(genreScopedRecords),
+    [genreScopedRecords],
+  );
 
   const selectionSets = useMemo(() => {
     const out = {} as Record<ShareFieldKey, Set<string>>;
@@ -284,6 +301,29 @@ const ShareModal = ({ setOnModal }: ExportModalType) => {
     }
     return out;
   }, [selections]);
+
+  useEffect(() => {
+    setPick((prev) => {
+      let changed = false;
+      const nextSelections = { ...prev.selections };
+      for (const k of FIELD_KEYS) {
+        const visibleValues =
+          k === 'comment'
+            ? commentAddonOpts.map((o) => o.key)
+            : k === 'spoiler'
+              ? spoilerAddonOpts.map((o) => o.key)
+              : options[k];
+        const visibleSet = new Set(visibleValues);
+        const filtered = prev.selections[k].filter((v) => visibleSet.has(v));
+        if (filtered.length !== prev.selections[k].length) {
+          nextSelections[k] = filtered;
+          changed = true;
+        }
+      }
+      if (!changed) return prev;
+      return { ...prev, selections: nextSelections };
+    });
+  }, [options, commentAddonOpts, spoilerAddonOpts]);
 
   const isFullSelection = useMemo(() => {
     if (!FIELD_KEYS.every((k) => enabled[k])) return false;

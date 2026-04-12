@@ -6,6 +6,42 @@ $mobile: 768;
   }
 }
 
+// @mixin most-outer-selector($new-class) {
+//   $current-selector: &;
+//   $new-selector: [];
+
+//   @each $item in $current-selector {
+//     $first-item: nth($item, 1);
+
+//     $appended-item: $first-item + $new-class;
+
+//     $new-item: set-nth($item, 1, $appended-item);
+//     $new-selector: append($new-item, $new-selector);
+//   }
+
+//   @at-root #{$new-selector} {
+//     @content;
+//   }
+// }
+@mixin most-outer-selector($new-class) {
+  $current-selector: &;
+  $new-selector: (
+  );
+
+@each $item in $current-selector {
+  $first-item: nth($item, 1);
+
+  $appended-item: selector-append($first-item, $new-class);
+
+  $new-item: set-nth($item, 1, $appended-item);
+  $new-selector: append($new-selector, $new-item);
+}
+
+@at-root #{$new-selector} {
+  @content;
+}
+}
+
 @mixin dotdotdot($font-size: 14, $lines-to-show: 1, $line-height: 1.5) {
   display: block;
   /* Fallback for non-webkit */

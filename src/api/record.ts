@@ -26,6 +26,7 @@ export type PublicRecordRow = {
   date: string;
   recomm_person_count: number | null;
   comment: string | null;
+  spoiler: string | null;
   genre: string | null;
   themename: string;
   shop_name: string | null;

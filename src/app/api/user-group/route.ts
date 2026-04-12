@@ -48,6 +48,8 @@ type RequestBody = {
   groupName?: string;
   name?: string;
   prevName?: string;
+  prevGroupName?: string;
+  deleteGroup?: boolean;
 };
 
 function splitMembers(value: string) {
@@ -86,8 +88,39 @@ export async function POST(request: Request) {
     const groupName = (body.groupName || '').trim();
     const name = (body.name || '').trim();
 
-    if (!groupName || !name) {
-      return NextResponse.json({ error: 'groupName, name 은 필수입니다.' }, { status: 400 });
+    if (!groupName) {
+      return NextResponse.json({ error: 'groupName 은 필수입니다.' }, { status: 400 });
+    }
+
+    if (!name) {
+      const { data: existing, error: existingError } = await supabase
+        .from('user_group')
+        .select('group_name')
+        .eq('email', email)
+        .eq('group_name', groupName)
+        .limit(1);
+
+      if (existingError) {
+        return NextResponse.json({ error: existingError.message }, { status: 500 });
+      }
+      if ((existing ?? []).length > 0) {
+        return NextResponse.json(
+          { error: '이미 존재하는 그룹 이름입니다.' },
+          { status: 400 }
+        );
+      }
+
+      const { error } = await supabase.from('user_group').insert({
+        email,
+        group_name: groupName,
+        name: '',
+      });
+
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+
+      return NextResponse.json({ ok: true }, { status: 200 });
     }
 
     const { error } = await supabase.from('user_group').insert({
@@ -118,8 +151,44 @@ export async function PATCH(request: Request) {
 
     const body = (await request.json()) as RequestBody;
     const groupName = (body.groupName || '').trim();
+    const prevGroupName = (body.prevGroupName || '').trim();
     const prevName = (body.prevName || '').trim();
     const name = (body.name || '').trim();
+
+    if (prevGroupName && groupName && !prevName) {
+      if (prevGroupName === groupName) {
+        return NextResponse.json({ ok: true }, { status: 200 });
+      }
+
+      const { data: conflict, error: conflictError } = await supabase
+        .from('user_group')
+        .select('group_name')
+        .eq('email', email)
+        .eq('group_name', groupName)
+        .limit(1);
+
+      if (conflictError) {
+        return NextResponse.json({ error: conflictError.message }, { status: 500 });
+      }
+      if ((conflict ?? []).length > 0) {
+        return NextResponse.json(
+          { error: '해당 이름의 그룹이 이미 있습니다.' },
+          { status: 400 }
+        );
+      }
+
+      const { error: updateGroupError } = await supabase
+        .from('user_group')
+        .update({ group_name: groupName })
+        .eq('email', email)
+        .eq('group_name', prevGroupName);
+
+      if (updateGroupError) {
+        return NextResponse.json({ error: updateGroupError.message }, { status: 500 });
+      }
+
+      return NextResponse.json({ ok: true }, { status: 200 });
+    }
 
     if (!groupName || !prevName || !name) {
       return NextResponse.json(
@@ -188,8 +257,26 @@ export async function DELETE(request: Request) {
     const groupName = (body.groupName || '').trim();
     const name = (body.name || '').trim();
 
-    if (!groupName || !name) {
-      return NextResponse.json({ error: 'groupName, name 은 필수입니다.' }, { status: 400 });
+    if (!groupName) {
+      return NextResponse.json({ error: 'groupName 은 필수입니다.' }, { status: 400 });
+    }
+
+    if (body.deleteGroup) {
+      const { error: deleteAllError } = await supabase
+        .from('user_group')
+        .delete()
+        .eq('email', email)
+        .eq('group_name', groupName);
+
+      if (deleteAllError) {
+        return NextResponse.json({ error: deleteAllError.message }, { status: 500 });
+      }
+
+      return NextResponse.json({ ok: true }, { status: 200 });
+    }
+
+    if (!name) {
+      return NextResponse.json({ error: 'name 은 필수입니다.' }, { status: 400 });
     }
 
     const { data: rows, error: selectError } = await supabase

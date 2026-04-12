@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import ConfirmModal from '@/components/portalModal/confirmModal/ConfirmModal';
 import { useAuth } from '@/hooks/useAuth';
 import GroupSelectModal from '@/components/portalModal/groupSelectModal/GroupSelectModal';
+import { readDefaultCommentPublic } from '@/util/commentPublicPreference';
 
 type ThemeRow = { themename: string; shop_name: string | null };
 type UserGroupRow = { group_name: string | null; name: string | null };
@@ -77,6 +78,15 @@ function splitParticipantBaseNames(participantsCsv: string | undefined): string[
   return splitCsvNames(participantsCsv ?? '').map(normalizeParticipantToken).filter(Boolean);
 }
 
+/** 코멘트가 비어 있으면 설정·폼 값과 무관하게 항상 비공개로 저장한다. */
+function effectiveCommentPublic(
+  comment: string | undefined,
+  formCommentPublic: boolean | undefined
+): boolean {
+  if (!comment?.trim()) return false;
+  return formCommentPublic ?? false;
+}
+
 function deriveGroupNamesFromParticipants(
   groups: UserGroupRow[],
   participantsCsv: string | undefined
@@ -126,10 +136,16 @@ const Record = ({
   const [pendingSaveData, setPendingSaveData] = useState<formType | null>(null);
   const [savingAfterConfirm, setSavingAfterConfirm] = useState(false);
 
-  const mergedDefaults = useMemo(
-    () => ({ ...defaultValues, ...initialValues }),
-    [initialValues]
-  );
+  const mergedDefaults = useMemo(() => {
+    const base = { ...defaultValues, ...initialValues };
+    if (isEditMode || initialValues?.commentPublic !== undefined) {
+      return base;
+    }
+    if (typeof window === 'undefined') {
+      return base;
+    }
+    return { ...base, commentPublic: readDefaultCommentPublic() };
+  }, [initialValues, isEditMode]);
 
   const {
     register,
@@ -221,7 +237,7 @@ const Record = ({
   };
 
   const resetAllInputs = () => {
-    reset(defaultValues);
+    reset({ ...defaultValues, commentPublic: readDefaultCommentPublic() });
     setIncludeTime(false);
     setThemeDropdownOpen(false);
     setThemeSuggestions([]);
@@ -352,7 +368,7 @@ const Record = ({
           Number(data.partPersonCount?.trim()) || parseParticipantCount(data.participants ?? ''),
         recommendedPeople: data.recommendedPeople || undefined,
         comment: data.comment || undefined,
-        commentPublic: data.commentPublic ?? false,
+        commentPublic: effectiveCommentPublic(data.comment, data.commentPublic),
         spoiler: data.spoiler || undefined,
       });
 
@@ -385,7 +401,7 @@ const Record = ({
           Number(data.partPersonCount?.trim()) || parseParticipantCount(data.participants ?? ''),
         recommendedPeople: data.recommendedPeople || undefined,
         comment: data.comment || undefined,
-        commentPublic: data.commentPublic ?? false,
+        commentPublic: effectiveCommentPublic(data.comment, data.commentPublic),
         spoiler: data.spoiler || undefined,
       });
       alert('수정되었습니다.');
@@ -413,7 +429,7 @@ const Record = ({
           Number(data.partPersonCount?.trim()) || parseParticipantCount(data.participants ?? ''),
         recommendedPeople: data.recommendedPeople || undefined,
         comment: data.comment || undefined,
-        commentPublic: data.commentPublic ?? false,
+        commentPublic: effectiveCommentPublic(data.comment, data.commentPublic),
         spoiler: data.spoiler || undefined,
       });
       resetAllInputs();
@@ -590,7 +606,7 @@ const Record = ({
         </div>
 
         <div>
-          <label className="block mb-1 text-sm font-medium text-zinc-700">코멘트</label>
+          <label className="block mb-1 text-sm font-medium text-zinc-700">코멘트<span className="text-[12px] pl-2">작성하지 않을 시 설정과 관계없이 비공개</span></label>
           <textarea
             {...register('comment')}
             placeholder="코멘트를 입력하세요"
@@ -606,8 +622,8 @@ const Record = ({
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
                   <input
                     type="radio"
-                    checked={field.value === false}
-                    onChange={() => field.onChange(false)}
+                    checked={field.value === true}
+                    onChange={() => field.onChange(true)}
                     className="rounded-full border-zinc-300"
                   />
                   외부 공개
@@ -615,8 +631,8 @@ const Record = ({
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
                   <input
                     type="radio"
-                    checked={field.value === true}
-                    onChange={() => field.onChange(true)}
+                    checked={field.value === false}
+                    onChange={() => field.onChange(false)}
                     className="rounded-full border-zinc-300"
                   />
                   비공개

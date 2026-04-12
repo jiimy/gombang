@@ -139,7 +139,7 @@ export default function ShareViewPage() {
         <div className="text-sm text-zinc-500">표시할 기록이 없습니다.</div>
       ) : (
         <>
-          <div>{data.records.length}</div>
+          <div>{data.records.length}개</div>
           <ul className="space-y-3">
             {data.records.map((row, idx) => (
               <li

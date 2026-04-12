@@ -411,6 +411,7 @@ const AnalysisPage = () => {
           </p>
           <div className="flex flex-col gap-[16px]">
             <RecordPieSection title="장르" data={genreData} layout="ranking"/>
+                <RecordPieSection title="월별" data={monthData} layout="ranking" />
             <RecordPieSection title="참여 인원" data={partCountData} layout="ranking"/>
             <RecordPieSection title="그룹" data={groupData} layout="ranking"/>
             <RecordPieSection
@@ -418,7 +419,7 @@ const AnalysisPage = () => {
               data={participantData}
               layout="ranking"
             />
-            <RecordPieSection title="월별" data={monthData} layout="ranking"/>
+            
           </div>
         </>
       )}

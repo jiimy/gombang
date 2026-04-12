@@ -1,5 +1,5 @@
 import { ExportModalType } from '@/types/modal';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import ModalFrame from '../ModalFrame';
 import { Modal } from '../Modal';
 
@@ -20,21 +20,28 @@ const GroupModal = ({ setOnModal }: ExportModalType) => {
   const [rows, setRows] = useState<UserGroupRow[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<string>('');
   const [newName, setNewName] = useState('');
+  const [showAddGroupRow, setShowAddGroupRow] = useState(false);
+  const [newGroupNameInput, setNewGroupNameInput] = useState('');
   const [editingName, setEditingName] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState('');
+  const [editingGroup, setEditingGroup] = useState<string | null>(null);
+  const [editingGroupValue, setEditingGroupValue] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const newGroupNameInputRef = useRef<HTMLInputElement>(null);
 
   const grouped = useMemo(() => {
     const result = new Map<string, string[]>();
     rows.forEach((row) => {
       const groupName = (row.group_name || '').trim();
-      const rawName = (row.name || '').trim();
-      if (!groupName || !rawName) return;
+      if (!groupName) return;
       const list = result.get(groupName) ?? [];
-      splitMembers(rawName).forEach((member) => {
-        if (!list.includes(member)) list.push(member);
-      });
+      const rawName = (row.name || '').trim();
+      if (rawName) {
+        splitMembers(rawName).forEach((member) => {
+          if (!list.includes(member)) list.push(member);
+        });
+      }
       result.set(groupName, list);
     });
     return result;
@@ -80,6 +87,14 @@ const GroupModal = ({ setOnModal }: ExportModalType) => {
     if (!selectedGroup || groupNames.includes(selectedGroup)) return;
     setSelectedGroup(groupNames[0] ?? '');
   }, [groupNames, selectedGroup]);
+
+  useEffect(() => {
+    if (!showAddGroupRow) return;
+    const id = requestAnimationFrame(() => {
+      newGroupNameInputRef.current?.focus();
+    });
+    return () => cancelAnimationFrame(id);
+  }, [showAddGroupRow]);
 
   const addMember = async () => {
     const name = newName.trim();
@@ -153,6 +168,81 @@ const GroupModal = ({ setOnModal }: ExportModalType) => {
     await loadData();
   };
 
+  const createGroup = async () => {
+    const groupName = newGroupNameInput.trim();
+    if (!groupName) return;
+
+    setError('');
+    const res = await fetch('/api/user-group', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ groupName }),
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      setError(json?.error || '그룹 생성에 실패했습니다.');
+      return;
+    }
+
+    setNewGroupNameInput('');
+    setShowAddGroupRow(false);
+    setSelectedGroup(groupName);
+    await loadData();
+  };
+
+  const startEditGroup = (group: string) => {
+    setEditingGroup(group);
+    setEditingGroupValue(group);
+  };
+
+  const saveEditGroup = async () => {
+    const nextGroupName = editingGroupValue.trim();
+    if (!editingGroup || !nextGroupName) return;
+
+    setError('');
+    const res = await fetch('/api/user-group', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prevGroupName: editingGroup,
+        groupName: nextGroupName,
+      }),
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      setError(json?.error || '그룹 이름 수정에 실패했습니다.');
+      return;
+    }
+
+    setEditingGroup(null);
+    setEditingGroupValue('');
+    if (selectedGroup === editingGroup) {
+      setSelectedGroup(nextGroupName);
+    }
+    await loadData();
+  };
+
+  const removeGroup = async (group: string) => {
+    setError('');
+    const res = await fetch('/api/user-group', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ groupName: group, deleteGroup: true }),
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      setError(json?.error || '그룹 삭제에 실패했습니다.');
+      return;
+    }
+
+    if (selectedGroup === group) {
+      setSelectedGroup('');
+    }
+    setEditingGroup(null);
+    setEditingGroupValue('');
+    await loadData();
+  };
+
   return (
     <div>
       <ModalFrame
@@ -164,7 +254,37 @@ const GroupModal = ({ setOnModal }: ExportModalType) => {
       >
         <Modal.Title>그룹 설정</Modal.Title>
 
-        <div className="flex gap-2 mt-4">
+        <div className="flex flex-wrap items-center gap-2 mt-4">
+          <button
+            type="button"
+            onClick={() => setShowAddGroupRow((v) => !v)}
+            className="h-10 px-4 text-sm text-white rounded-md bg-zinc-800 hover:bg-zinc-700 shrink-0"
+          >
+            그룹 추가
+          </button>
+          {showAddGroupRow ? (
+            <>
+              <input
+                value={newGroupNameInput}
+                onChange={(e) => setNewGroupNameInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') createGroup();
+                }}
+                className="h-10 min-w-[140px] flex-1 px-3 text-sm border rounded-md border-zinc-300"
+                placeholder="새 그룹 이름"
+              />
+              <button
+                type="button"
+                onClick={createGroup}
+                className="h-10 px-4 text-sm text-white rounded-md bg-zinc-800 hover:bg-zinc-700 shrink-0"
+              >
+                만들기
+              </button>
+            </>
+          ) : null}
+        </div>
+
+        <div className="flex gap-2 mt-3">
           <input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
@@ -197,21 +317,73 @@ const GroupModal = ({ setOnModal }: ExportModalType) => {
               <div className="p-3 text-sm text-zinc-500">그룹이 없습니다.</div>
             ) : (
               <ul className="divide-y divide-zinc-100">
-                {groupNames.map((group) => (
-                  <li key={group}>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedGroup(group)}
-                      className={`w-full px-3 py-2 text-left text-sm ${
-                        selectedGroup === group
-                          ? 'bg-zinc-100 text-zinc-900'
-                          : 'text-zinc-700 hover:bg-zinc-50'
-                      }`}
-                    >
-                      {group}
-                    </button>
-                  </li>
-                ))}
+                {groupNames.map((group) => {
+                  const isEditingGroup = editingGroup === group;
+                  return (
+                    <li key={group} className="px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        {isEditingGroup ? (
+                          <input
+                            value={editingGroupValue}
+                            onChange={(e) => setEditingGroupValue(e.target.value)}
+                            className="flex-1 h-8 px-2 text-sm border rounded border-zinc-300"
+                          />
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedGroup(group)}
+                            className={`flex-1 min-w-0 py-1 text-left text-sm truncate rounded ${
+                              selectedGroup === group
+                                ? 'text-zinc-900 font-medium'
+                                : 'text-zinc-700 hover:text-zinc-900'
+                            }`}
+                          >
+                            {group}
+                          </button>
+                        )}
+
+                        {isEditingGroup ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={saveEditGroup}
+                              className="px-2 py-1 text-xs border rounded border-zinc-300 text-zinc-700 hover:bg-zinc-50 shrink-0"
+                            >
+                              저장
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingGroup(null);
+                                setEditingGroupValue('');
+                              }}
+                              className="px-2 py-1 text-xs border rounded border-zinc-300 text-zinc-700 hover:bg-zinc-50 shrink-0"
+                            >
+                              취소
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => startEditGroup(group)}
+                              className="px-2 py-1 text-xs border rounded border-zinc-300 text-zinc-700 hover:bg-zinc-50 shrink-0"
+                            >
+                              수정
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeGroup(group)}
+                              className="px-2 py-1 text-xs text-red-500 border border-red-200 rounded hover:bg-red-50 shrink-0"
+                            >
+                              삭제
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>

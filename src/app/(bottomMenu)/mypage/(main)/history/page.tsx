@@ -8,8 +8,10 @@ import type { SearchRecordRow } from '@/components/recordList/RecordItem';
 import Record from '@/components/record/Record';
 import Loading from '@/components/loading/Loading';
 import SharedModal from '@/components/portalModal/sharedModal/SharedModal';
+import EditModal from '@/components/portalModal/editModal/EditModal';
+import { usePathname } from 'next/navigation';
 
-type Category = 'genre' | 'shop_name' | 'group_name';
+type Category = 'genre' | 'shop_name' | 'group_name' | 'comment_public';
 type SortKey = 'date' | 'participants' | 'theme';
 type SortDirection = 'asc' | 'desc';
 
@@ -17,6 +19,7 @@ const categoryLabel: Record<Category, string> = {
   genre: '장르',
   shop_name: '매장',
   group_name: '그룹',
+  comment_public: '공개',
 };
 
 /** DB의 genre 문자열을 콤마 기준으로 나누어 개별 장르 배열로 만듦 (예: "공포, 이머시브" → ["공포", "이머시브"]) */
@@ -34,6 +37,12 @@ function rowMatchesCategorySelection(
   sel: string | null
 ): boolean {
   if (!sel) return true;
+  if (cat === 'comment_public') {
+    const isPublic = Boolean(row.comment_public);
+    if (sel === '공개') return isPublic;
+    if (sel === '비공개') return !isPublic;
+    return true;
+  }
   if (cat === 'genre') {
     return splitGenres(row.genre).includes(sel);
   }
@@ -41,8 +50,10 @@ function rowMatchesCategorySelection(
 }
 
 const SearchPage = () => {
+  const HISTORY_SCROLL_KEY = 'history_list_scroll_y';
   const supabase = createClient();
   const { user, loading } = useAuth();
+  const pathname = usePathname();
 
   const [records, setRecords] = useState<SearchRecordRow[]>([]);
   const [query, setQuery] = useState('');
@@ -53,6 +64,7 @@ const SearchPage = () => {
     genre: null,
     shop_name: null,
     group_name: null,
+    comment_public: null,
   });
   const [sortKey, setSortKey] = useState<SortKey>('date');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
@@ -60,6 +72,93 @@ const SearchPage = () => {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<SearchRecordRow | null>(null);
   const [sharedModalOpen, setSharedModalOpen] = useState(false);
+
+  const historyBasePath = useMemo(() => {
+    return pathname.replace(/\/edit\/\d+$/, '');
+  }, [pathname]);
+
+  const syncSelectedRecordWithPath = useCallback(
+    (path: string) => {
+      const editPrefix = `${historyBasePath}/edit/`;
+      if (!path.startsWith(editPrefix)) {
+        setSelectedRecord(null);
+        return;
+      }
+
+      const idText = path.slice(editPrefix.length);
+      const id = Number(idText);
+      if (!Number.isFinite(id)) {
+        setSelectedRecord(null);
+        return;
+      }
+
+      const matched = records.find((row) => row.id === id) ?? null;
+      setSelectedRecord(matched);
+    },
+    [historyBasePath, records]
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const targetPath = selectedRecord
+      ? `${historyBasePath}/edit/${selectedRecord.id}`
+      : historyBasePath;
+    const currentPathWithQuery = `${window.location.pathname}${window.location.search}`;
+    const isEditPath = /\/edit\/\d+$/.test(window.location.pathname);
+
+    if (currentPathWithQuery !== targetPath) {
+      if (selectedRecord) {
+        const savedYText = window.sessionStorage.getItem(HISTORY_SCROLL_KEY);
+        const savedY =
+          savedYText !== null && Number.isFinite(Number(savedYText))
+            ? Number(savedYText)
+            : window.scrollY;
+        const currentState = window.history.state ?? {};
+        window.history.replaceState(
+          { ...currentState, historyListScrollY: savedY },
+          '',
+          currentPathWithQuery
+        );
+        window.history.pushState({ fromHistoryEdit: true }, '', targetPath);
+      } else if (isEditPath) {
+        window.history.replaceState(window.history.state, '', targetPath);
+      }
+    }
+  }, [selectedRecord, historyBasePath, HISTORY_SCROLL_KEY]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    syncSelectedRecordWithPath(window.location.pathname);
+  }, [syncSelectedRecordWithPath, historyBasePath, HISTORY_SCROLL_KEY]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handlePopState = () => {
+      syncSelectedRecordWithPath(window.location.pathname);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [syncSelectedRecordWithPath]);
+
+  useEffect(() => {
+    if (selectedRecord) return;
+    if (fetching) return;
+
+  }, [selectedRecord, fetching]);
+
+  const handleSelectRecord = useCallback(
+    (record: SearchRecordRow) => {
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.setItem(HISTORY_SCROLL_KEY, String(window.scrollY));
+      }
+      setSelectedRecord(record);
+    },
+    [HISTORY_SCROLL_KEY]
+  );
 
   const handleSortClick = (key: SortKey) => {
     if (sortKey === key) {
@@ -131,7 +230,7 @@ const SearchPage = () => {
   /** 활성 탭 값 목록: 다른 카테고리에 선택이 있으면 그 조건을 만족하는 행만 반영 */
   const recordsForCategoryOptions = useMemo(() => {
     return baseFilteredRecords.filter((row) => {
-      for (const cat of (['genre', 'shop_name', 'group_name'] as Category[])) {
+      for (const cat of (['genre', 'shop_name', 'group_name', 'comment_public'] as Category[])) {
         if (cat === activeCategory) continue;
         const sel = selections[cat];
         if (!rowMatchesCategorySelection(cat, row, sel)) return false;
@@ -141,6 +240,10 @@ const SearchPage = () => {
   }, [baseFilteredRecords, activeCategory, selections]);
 
   const categoryOptions = useMemo(() => {
+    if (activeCategory === 'comment_public') {
+      return ['공개', '비공개'];
+    }
+
     const unique = new Set<string>();
     recordsForCategoryOptions.forEach((row) => {
       if (activeCategory === 'genre') {
@@ -163,7 +266,7 @@ const SearchPage = () => {
 
   const filteredRecords = useMemo(() => {
     return baseFilteredRecords.filter((row) => {
-      for (const cat of (['genre', 'shop_name', 'group_name'] as Category[])) {
+      for (const cat of (['genre', 'shop_name', 'group_name', 'comment_public'] as Category[])) {
         const sel = selections[cat];
         if (!rowMatchesCategorySelection(cat, row, sel)) return false;
       }
@@ -188,6 +291,13 @@ const SearchPage = () => {
     return rows;
   }, [filteredRecords, sortKey, sortDirection]);
 
+  const filterSummaryText = useMemo(() => {
+    const order: Category[] = ['genre', 'shop_name', 'group_name', 'comment_public'];
+    return order
+      .map((cat) => `${categoryLabel[cat]}-${selections[cat] ?? '전체'}`)
+      .join(' / ');
+  }, [selections]);
+
   if (loading) {
     return <div className="p-4 text-sm text-zinc-500">로딩 중...</div>;
     // return <Loading />
@@ -197,40 +307,10 @@ const SearchPage = () => {
     return <div className="p-4 text-sm text-zinc-500">로그인이 필요합니다.</div>;
   }
 
-  if (selectedRecord) {
-    return (
-      <Record
-        mode="edit"
-        recordId={selectedRecord.id}
-        initialValues={{
-          themeName: selectedRecord.themename ?? '',
-          date: selectedRecord.date ?? '',
-          genre: selectedRecord.genre ?? '',
-          location: selectedRecord.location ?? '',
-          shopName: selectedRecord.shop_name ?? '',
-          price: selectedRecord.price ?? '',
-          participants: selectedRecord.participant ?? '',
-          partPersonCount: selectedRecord.part_person_count
-            ? String(selectedRecord.part_person_count)
-            : '',
-          recommendedPeople: selectedRecord.recomm_person_count ?? '',
-          comment: selectedRecord.comment ?? '',
-          commentPublic: selectedRecord.comment_public ?? false,
-          spoiler: selectedRecord.spoiler ?? '',
-        }}
-        onSuccess={async () => {
-          await fetchMyRecords();
-          setSelectedRecord(null);
-        }}
-        onCancelEdit={() => setSelectedRecord(null)}
-      />
-    );
-  }
-
   return (
     <div className="px-4 pb-4 space-y-4">
-      <div className="sticky top-0 flex flex-wrap items-center w-full gap-2 pt-[20px] bg-white pb-[20px]">
-        <div className="flex flex-wrap gap-2">
+      <div className="sticky top-0 flex flex-wrap items-center w-full gap-2  bg-white py-[20px] mb-0">
+        <div className="w-full">
           <button
             type="button"
             onClick={() => setSharedModalOpen(true)}
@@ -290,7 +370,7 @@ const SearchPage = () => {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {(['genre', 'shop_name', 'group_name'] as Category[]).map((key) => (
+          {(['genre', 'shop_name', 'group_name', 'comment_public'] as Category[]).map((key) => (
             <button
               key={key}
               type="button"
@@ -353,12 +433,52 @@ const SearchPage = () => {
           <div className="text-sm text-red-500">{fetchError}</div>
         ) : (
           <>
+            <div className="mb-1 text-sm text-zinc-600">{filterSummaryText}</div>
             <div className="mb-2 text-sm text-zinc-600">총 {sortedRecords.length}개</div>
-            <RecordList records={sortedRecords} onSelectRecord={setSelectedRecord} />
+            <RecordList records={sortedRecords} onSelectRecord={handleSelectRecord} />
           </>
         )}
       </div>
       {sharedModalOpen ? <SharedModal setOnModal={setSharedModalOpen} /> : null}
+      {selectedRecord ? (
+        <EditModal
+          setOnModal={(next) => {
+            const shouldOpen = typeof next === 'function' ? next(true) : next;
+            if (!shouldOpen) setSelectedRecord(null);
+          }}
+          dimClick={false}
+          isDim={false}
+          modalType={'page'}
+        >
+          <div className="pr-1 overflow-y-auto">
+            <Record
+              mode="edit"
+              recordId={selectedRecord.id}
+              initialValues={{
+                themeName: selectedRecord.themename ?? '',
+                date: selectedRecord.date ?? '',
+                genre: selectedRecord.genre ?? '',
+                location: selectedRecord.location ?? '',
+                shopName: selectedRecord.shop_name ?? '',
+                price: selectedRecord.price ?? '',
+                participants: selectedRecord.participant ?? '',
+                partPersonCount: selectedRecord.part_person_count
+                  ? String(selectedRecord.part_person_count)
+                  : '',
+                recommendedPeople: selectedRecord.recomm_person_count ?? '',
+                comment: selectedRecord.comment ?? '',
+                commentPublic: selectedRecord.comment_public ?? false,
+                spoiler: selectedRecord.spoiler ?? '',
+              }}
+              onSuccess={async () => {
+                await fetchMyRecords();
+                setSelectedRecord(null);
+              }}
+              onCancelEdit={() => setSelectedRecord(null)}
+            />
+          </div>
+        </EditModal>
+      ) : null}
     </div>
   );
 };

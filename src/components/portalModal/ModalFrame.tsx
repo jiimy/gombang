@@ -13,7 +13,8 @@ type modalFrameType = {
   isDim?: boolean;
   zindex?: number;
   dimClick?: boolean;
-  onClick?: () => {};
+  modalType?: 'modal' | 'page';
+  onClick?: () => void;
   className?: string
 }
 
@@ -24,12 +25,13 @@ const ModalFrame = ({
   isDim,
   zindex,
   dimClick,
-  onClick,
+  modalType = 'modal',
+  onClick,  
   className
 }: modalFrameType) => {
   return (
     <ModalPortal>
-      <div className={s.modal} onClick={onClick}>
+      <div className={classNames(s.modal, modalType === 'page' && s.page)} onClick={onClick}>
         <div className={s.modal_container}>
           <div className={`${className} ${s.modal_content} `}>
             {children}

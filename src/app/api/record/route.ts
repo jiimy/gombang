@@ -1,7 +1,6 @@
 import type { RecordRequestBody, UpdateRecordRequestBody } from '@/api/record';
 import { createServerSupabase } from '@/util/supabase/server';
 import { NextResponse } from 'next/server';
-import { cookies } from "next/headers";
 
 export async function POST(request: Request) {
   try {
@@ -157,7 +156,7 @@ export async function GET(request: Request) {
 
     let query = supabase
       .from('record')
-      .select('id,date,recomm_person_count,comment,genre,themename,shop_name,user_name')
+      .select('id,date,recomm_person_count,comment,spoiler,genre,themename,shop_name,user_name')
       .eq('comment_public', true)
       .order('id', { ascending: true })
       .range(startIndex, endIndex);

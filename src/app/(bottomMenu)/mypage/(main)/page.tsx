@@ -1,22 +1,28 @@
 'use client';
-// import { myYoutubeUplaodApi } from '@/api/youtube';
-// import PieChart from '@/components/chart/PieChart';
-// import { isLogin } from '@/util/authCookie';
-import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import React, { useEffect, useState } from 'react';
+import React, { useState, useSyncExternalStore } from 'react';
 import s from './mypage.module.scss';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import GroupModal from '@/components/portalModal/groupModal/GroupModal';
 import ShareModal from '@/components/portalModal/shareModal/ShareModal';
+import {
+  readDefaultCommentPublic,
+  subscribeDefaultCommentPublic,
+  writeDefaultCommentPublic,
+} from '@/util/commentPublicPreference';
 
 const MyPage = () => {
   const router = useRouter();
   const { user, loading, signOut } = useAuth();
   const [groupModalOpen, setGroupModalOpen] = useState<boolean>(false);
   const [shareModalOpen, setShareModalOpen] = useState<boolean>(false);
+  const defaultCommentPublic = useSyncExternalStore(
+    subscribeDefaultCommentPublic,
+    readDefaultCommentPublic,
+    () => false
+  );
   // const { data } = useQuery({
   //   queryFn: () => myYoutubeUplaodApi(),
   //   queryKey: ['myYoutubeUpload']
@@ -111,11 +117,11 @@ const MyPage = () => {
             <button
               type="button"
               onClick={() => {
-                router.push('/mypage/search');
+                router.push('/mypage/history');
               }}
               className="text-blue-600 underline underline-offset-2 hover:text-blue-800"
             >
-              /mypage/search 로 이동
+              /mypage/history 로 이동
             </button>
           </li>
           <li>
@@ -129,7 +135,41 @@ const MyPage = () => {
               /mypage/analysis 로 이동
             </button>
           </li>
+          {/* <li>
+            <button
+              type="button"
+              onClick={() => {
+                router.push('/mypage/settings');
+              }}
+              className="text-blue-600 underline underline-offset-2 hover:text-blue-800"
+            >
+             설정
+            </button>
+          </li> */}
         </ul>
+      </div>
+      <div className="py-6">
+        <p className="mb-3 text-gray-500">새 기록 작성 시 공개 설정</p>
+        <div className="flex flex-col gap-2 sm:flex-row sm:gap-6">
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input
+              type="radio"
+              name="defaultCommentPublic"
+              checked={defaultCommentPublic === true}
+              onChange={() => writeDefaultCommentPublic(true)}
+            />
+            외부 공개
+          </label>
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input
+              type="radio"
+              name="defaultCommentPublic"
+              checked={defaultCommentPublic === false}
+              onChange={() => writeDefaultCommentPublic(false)}
+            />
+            비공개
+          </label>
+        </div>
       </div>
       {
         groupModalOpen &&

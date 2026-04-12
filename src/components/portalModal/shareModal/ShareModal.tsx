@@ -118,11 +118,13 @@ function MonthGroupCheckbox({
   monthDates,
   selected,
   onToggle,
+  disabled = false,
 }: {
   monthKey: string;
   monthDates: string[];
   selected: string[];
   onToggle: () => void;
+  disabled?: boolean;
 }) {
   const ref = useRef<HTMLInputElement>(null);
   const selSet = useMemo(() => new Set(selected), [selected]);
@@ -140,8 +142,9 @@ function MonthGroupCheckbox({
       ref={ref}
       type="checkbox"
       checked={allSelected}
+      disabled={disabled}
       onChange={onToggle}
-      className="mt-0.5 shrink-0"
+      className="mt-0.5 shrink-0 disabled:cursor-not-allowed"
       title="이 달 전체"
       aria-label={`${formatMonthHeading(monthKey)} 전체 선택`}
     />
@@ -273,7 +276,9 @@ const ShareModal = ({ setOnModal }: ExportModalType) => {
 
   const sharerNickname = useMemo(() => getSharerNicknameFromUser(user), [user]);
 
-  const allOptions = useMemo(() => deriveOptions(records), [records]);
+  const options = useMemo(() => deriveOptions(records), [records]);
+  const commentAddonOpts = useMemo(() => deriveAddonCommentOptions(records), [records]);
+  const spoilerAddonOpts = useMemo(() => deriveAddonSpoilerOptions(records), [records]);
 
   const genreScopedRecords = useMemo(() => {
     if (!enabled.genre || selections.genre.length === 0) return records;
@@ -281,18 +286,27 @@ const ShareModal = ({ setOnModal }: ExportModalType) => {
     return records.filter((r) => splitGenres(r.genre).some((g) => selectedGenres.has(g)));
   }, [records, enabled.genre, selections.genre]);
 
-  const options = useMemo(() => {
-    const scoped = deriveOptions(genreScopedRecords);
-    return { ...scoped, genre: allOptions.genre };
-  }, [genreScopedRecords, allOptions.genre]);
-  const commentAddonOpts = useMemo(
+  const availableOptions = useMemo(() => deriveOptions(genreScopedRecords), [genreScopedRecords]);
+  const availableCommentAddonOpts = useMemo(
     () => deriveAddonCommentOptions(genreScopedRecords),
     [genreScopedRecords],
   );
-  const spoilerAddonOpts = useMemo(
+  const availableSpoilerAddonOpts = useMemo(
     () => deriveAddonSpoilerOptions(genreScopedRecords),
     [genreScopedRecords],
   );
+
+  const availableOptionSets = useMemo(() => {
+    return {
+      genre: new Set(options.genre),
+      part_person_count: new Set(availableOptions.part_person_count),
+      group_name: new Set(availableOptions.group_name),
+      participant: new Set(availableOptions.participant),
+      date: new Set(availableOptions.date),
+      comment: new Set(availableCommentAddonOpts.map((o) => o.key)),
+      spoiler: new Set(availableSpoilerAddonOpts.map((o) => o.key)),
+    } satisfies Record<ShareFieldKey, Set<string>>;
+  }, [options.genre, availableOptions, availableCommentAddonOpts, availableSpoilerAddonOpts]);
 
   const selectionSets = useMemo(() => {
     const out = {} as Record<ShareFieldKey, Set<string>>;
@@ -307,14 +321,7 @@ const ShareModal = ({ setOnModal }: ExportModalType) => {
       let changed = false;
       const nextSelections = { ...prev.selections };
       for (const k of FIELD_KEYS) {
-        const visibleValues =
-          k === 'comment'
-            ? commentAddonOpts.map((o) => o.key)
-            : k === 'spoiler'
-              ? spoilerAddonOpts.map((o) => o.key)
-              : options[k];
-        const visibleSet = new Set(visibleValues);
-        const filtered = prev.selections[k].filter((v) => visibleSet.has(v));
+        const filtered = prev.selections[k].filter((v) => availableOptionSets[k].has(v));
         if (filtered.length !== prev.selections[k].length) {
           nextSelections[k] = filtered;
           changed = true;
@@ -323,23 +330,23 @@ const ShareModal = ({ setOnModal }: ExportModalType) => {
       if (!changed) return prev;
       return { ...prev, selections: nextSelections };
     });
-  }, [options, commentAddonOpts, spoilerAddonOpts]);
+  }, [availableOptionSets]);
 
   const isFullSelection = useMemo(() => {
     if (!FIELD_KEYS.every((k) => enabled[k])) return false;
     for (const k of FIELD_KEYS) {
       const optKeys =
         k === 'comment'
-          ? commentAddonOpts.map((o) => o.key)
+          ? availableCommentAddonOpts.map((o) => o.key)
           : k === 'spoiler'
-            ? spoilerAddonOpts.map((o) => o.key)
-            : options[k];
+            ? availableSpoilerAddonOpts.map((o) => o.key)
+            : Array.from(availableOptionSets[k]);
       const sel = selections[k];
       if (optKeys.length === 0) continue;
       if (!arraysEqualAsSets(optKeys, sel)) return false;
     }
     return true;
-  }, [enabled, options, selections, commentAddonOpts, spoilerAddonOpts]);
+  }, [enabled, selections, availableOptionSets, availableCommentAddonOpts, availableSpoilerAddonOpts]);
 
   const filteredPreview = useMemo(
     () => filterRecordsForShare(records, enabled, selectionSets),
@@ -446,9 +453,7 @@ const ShareModal = ({ setOnModal }: ExportModalType) => {
     const nextSel = emptySelections();
     for (const k of FIELD_KEYS) {
       nextEnabled[k] = true;
-      if (k === 'comment') nextSel[k] = commentAddonOpts.map((o) => o.key);
-      else if (k === 'spoiler') nextSel[k] = spoilerAddonOpts.map((o) => o.key);
-      else nextSel[k] = [...options[k]];
+      nextSel[k] = Array.from(availableOptionSets[k]);
     }
     setPick({ enabled: nextEnabled, selections: nextSel });
   };
@@ -461,7 +466,7 @@ const ShareModal = ({ setOnModal }: ExportModalType) => {
         enabled: { ...prev.enabled, [key]: nextOn },
         selections: {
           ...prev.selections,
-          [key]: nextOn ? (isAddonOnly ? [] : [...options[key]]) : [],
+          [key]: nextOn ? (isAddonOnly ? [] : Array.from(availableOptionSets[key])) : [],
         },
       };
     });
@@ -547,8 +552,11 @@ const ShareModal = ({ setOnModal }: ExportModalType) => {
                     : key === 'spoiler'
                       ? spoilerAddonOpts.map((o) => o.key)
                       : options[key];
+                const availableSet = availableOptionSets[key];
+                const selectableOpts = opts.filter((v) => availableSet.has(v));
                 const on = enabled[key];
-                const optCount = addonRows ? addonRows.length : opts.length;
+                const optCount = selectableOpts.length;
+                const totalCount = opts.length;
                 return (
                   <div key={key} className="p-3 border rounded-lg border-zinc-200 bg-zinc-50/80">
                     <div className="flex flex-wrap items-center gap-2">
@@ -565,35 +573,39 @@ const ShareModal = ({ setOnModal }: ExportModalType) => {
                       </button>
                       {!on ? (
                         <span className="text-xs text-zinc-400">비활성</span>
-                      ) : optCount === 0 ? (
+                      ) : totalCount === 0 ? (
                         <span className="text-xs text-zinc-500">이 필드에 해당 값이 없습니다.</span>
+                      ) : optCount === 0 ? (
+                        <span className="text-xs text-zinc-500">선택 가능한 값이 없습니다.</span>
                       ) : (
-                        <span className="text-xs text-zinc-500">{optCount}개 값</span>
+                        <span className="text-xs text-zinc-500">
+                          {optCount}개 선택 가능 / 전체 {totalCount}개
+                        </span>
                       )}
                     </div>
 
-                    {on && (key === 'comment' || key === 'spoiler') && optCount > 0 && (
+                    {on && (key === 'comment' || key === 'spoiler') && totalCount > 0 && (
                       <p className="mt-1 text-[11px] text-zinc-500">
                         체크한 항목만 공유 데이터에 포함됩니다(테마명으로 구분). 목록 필터에는 영향을 주지
                         않습니다.
                       </p>
                     )}
 
-                    {on && optCount > 0 && (
+                    {on && totalCount > 0 && (
                       key === 'date' ? (
                         <div className="flex flex-col mt-2 overflow-hidden bg-white border rounded max-h-72 min-h-0 border-zinc-100">
                           <SectionSelectAllCheckbox
-                            allOptions={opts}
+                            allOptions={selectableOpts}
                             selected={selections[key]}
                             onToggleAll={() => {
                               setPick((prev) => {
                                 const cur = prev.selections[key];
-                                const allOn = arraysEqualAsSets(opts, cur);
+                                const allOn = arraysEqualAsSets(selectableOpts, cur);
                                 return {
                                   ...prev,
                                   selections: {
                                     ...prev.selections,
-                                    [key]: allOn ? [] : [...opts],
+                                    [key]: allOn ? [] : [...selectableOpts],
                                   },
                                 };
                               });
@@ -607,18 +619,36 @@ const ShareModal = ({ setOnModal }: ExportModalType) => {
                               <ul className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden divide-y divide-zinc-100">
                                 {groupDateOptsByMonth(opts).map(({ monthKey, dates }) => (
                                   <li key={`date-month-${monthKey}`} className="px-2 py-1.5">
-                                    <label className="flex items-start gap-2 text-xs cursor-pointer select-none text-zinc-800">
+                                    {(() => {
+                                      const selectableDates = dates.filter((d) => availableSet.has(d));
+                                      const disabled = selectableDates.length === 0;
+                                      return (
+                                        <label
+                                          className={`flex items-start gap-2 text-xs select-none ${
+                                            disabled
+                                              ? 'cursor-not-allowed text-zinc-400'
+                                              : 'cursor-pointer text-zinc-800'
+                                          }`}
+                                        >
                                       <MonthGroupCheckbox
                                         monthKey={monthKey}
-                                        monthDates={dates}
+                                        monthDates={selectableDates}
                                         selected={selections.date}
-                                        onToggle={() => toggleDateMonth(dates)}
+                                        disabled={disabled}
+                                        onToggle={() => toggleDateMonth(selectableDates)}
                                       />
                                       <span className="min-w-0 leading-snug">
-                                        <span className="font-semibold text-zinc-900">{formatMonthHeading(monthKey)}</span>
-                                        <span className="text-zinc-500"> ({dates.length})</span>
+                                        <span className={disabled ? 'font-semibold text-zinc-400' : 'font-semibold text-zinc-900'}>
+                                          {formatMonthHeading(monthKey)}
+                                        </span>
+                                        <span className={disabled ? 'text-zinc-400' : 'text-zinc-500'}>
+                                          {' '}
+                                          ({selectableDates.length})
+                                        </span>
                                       </span>
-                                    </label>
+                                        </label>
+                                      );
+                                    })()}
                                   </li>
                                 ))}
                               </ul>
@@ -630,13 +660,19 @@ const ShareModal = ({ setOnModal }: ExportModalType) => {
                               <ul className="flex-1 min-h-0 overflow-y-auto divide-y divide-zinc-100">
                                 {opts.map((val) => {
                                   const checked = selections[key].includes(val);
+                                  const disabled = !availableSet.has(val);
                                   return (
                                     <li key={`${key}-${val}`} className="px-2 py-1.5">
-                                      <label className="flex items-start gap-2 text-xs cursor-pointer select-none text-zinc-800">
+                                      <label
+                                        className={`flex items-start gap-2 text-xs select-none ${
+                                          disabled ? 'cursor-not-allowed text-zinc-400' : 'cursor-pointer text-zinc-800'
+                                        }`}
+                                      >
                                         <input
                                           type="checkbox"
                                           className="mt-0.5 shrink-0"
                                           checked={checked}
+                                          disabled={disabled}
                                           onChange={() => toggleOption(key, val)}
                                         />
                                         <span>{dateLabelWithWeekday(val)}</span>
@@ -651,17 +687,17 @@ const ShareModal = ({ setOnModal }: ExportModalType) => {
                       ) : (
                         <div className="mt-2 overflow-auto bg-white border rounded max-h-36 border-zinc-100">
                           <SectionSelectAllCheckbox
-                            allOptions={opts}
+                            allOptions={selectableOpts}
                             selected={selections[key]}
                             onToggleAll={() => {
                               setPick((prev) => {
                                 const cur = prev.selections[key];
-                                const allOn = arraysEqualAsSets(opts, cur);
+                                const allOn = arraysEqualAsSets(selectableOpts, cur);
                                 return {
                                   ...prev,
                                   selections: {
                                     ...prev.selections,
-                                    [key]: allOn ? [] : [...opts],
+                                    [key]: allOn ? [] : [...selectableOpts],
                                   },
                                 };
                               });
@@ -671,17 +707,25 @@ const ShareModal = ({ setOnModal }: ExportModalType) => {
                             {addonRows
                               ? addonRows.map((row) => {
                                   const checked = selections[key].includes(row.key);
+                                  const disabled = !availableSet.has(row.key);
                                   return (
                                     <li key={row.key} className="px-2 py-1.5">
-                                      <label className="flex items-start gap-2 text-xs cursor-pointer select-none text-zinc-800">
+                                      <label
+                                        className={`flex items-start gap-2 text-xs select-none ${
+                                          disabled ? 'cursor-not-allowed text-zinc-400' : 'cursor-pointer text-zinc-800'
+                                        }`}
+                                      >
                                         <input
                                           type="checkbox"
                                           className="mt-0.5 shrink-0"
                                           checked={checked}
+                                          disabled={disabled}
                                           onChange={() => toggleOption(key, row.key)}
                                         />
                                         <span>
-                                          <span className="font-semibold text-zinc-900">{row.themename}</span>
+                                          <span className={disabled ? 'font-semibold text-zinc-400' : 'font-semibold text-zinc-900'}>
+                                            {row.themename}
+                                          </span>
                                           <span className="text-zinc-400"> · </span>
                                           <span>{truncateSnippet(row.text)}</span>
                                         </span>
@@ -691,13 +735,19 @@ const ShareModal = ({ setOnModal }: ExportModalType) => {
                                 })
                               : opts.map((val) => {
                                   const checked = selections[key].includes(val);
+                                  const disabled = !availableSet.has(val);
                                   return (
                                     <li key={`${key}-${val}`} className="px-2 py-1.5">
-                                      <label className="flex items-start gap-2 text-xs cursor-pointer select-none text-zinc-800">
+                                      <label
+                                        className={`flex items-start gap-2 text-xs select-none ${
+                                          disabled ? 'cursor-not-allowed text-zinc-400' : 'cursor-pointer text-zinc-800'
+                                        }`}
+                                      >
                                         <input
                                           type="checkbox"
                                           className="mt-0.5"
                                           checked={checked}
+                                          disabled={disabled}
                                           onChange={() => toggleOption(key, val)}
                                         />
                                         <span>{labelForOption(val)}</span>

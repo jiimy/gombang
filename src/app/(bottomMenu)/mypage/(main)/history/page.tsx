@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/util/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import RecordList from '@/components/recordList/RecordList';
@@ -10,6 +10,8 @@ import Loading from '@/components/loading/Loading';
 import SharedModal from '@/components/portalModal/sharedModal/SharedModal';
 import EditModal from '@/components/portalModal/editModal/EditModal';
 import { usePathname } from 'next/navigation';
+import { useHeaderVisible } from '@/hooks/useHeaderVisible';
+import s from './historypage.module.scss';
 
 type Category = 'genre' | 'shop_name' | 'group_name' | 'comment_public';
 type SortKey = 'date' | 'participants' | 'theme';
@@ -298,18 +300,17 @@ const SearchPage = () => {
       .join(' / ');
   }, [selections]);
 
-  if (loading) {
-    return <div className="p-4 text-sm text-zinc-500">로딩 중...</div>;
-    // return <Loading />
-  }
-
-  if (!user) {
-    return <div className="p-4 text-sm text-zinc-500">로그인이 필요합니다.</div>;
-  }
-
   return (
     <div className="px-4 pb-4 space-y-4">
-      <div className="sticky top-0 flex flex-wrap items-center w-full gap-2  bg-white py-[20px] mb-0">
+      {loading ? (
+        <div className="p-4 text-sm text-zinc-500">로딩 중...</div>
+      ) : !user ? (
+        <div className="p-4 text-sm text-zinc-500">로그인이 필요합니다.</div>
+      ) : (
+        <>
+      <div className={s.headerSticky}>
+        <div className={`${s.headerClip}`}>
+        <div className={s.header}>
         <div className="w-full">
           <button
             type="button"
@@ -428,6 +429,8 @@ const SearchPage = () => {
         <div className="mb-1 text-sm text-zinc-600">{filterSummaryText}</div>
         <div className="mb-2 text-sm text-zinc-600">총 {sortedRecords.length}개</div>
         </div>
+        </div>
+        </div>
       </div>
       <div className="pt-2">
         {fetching ? (
@@ -482,6 +485,8 @@ const SearchPage = () => {
           </div>
         </EditModal>
       ) : null}
+        </>
+      )}
     </div>
   );
 };

@@ -1,0 +1,24 @@
+.header {
+  // position: sticky;
+  // top: 20px;
+  // z-index: 100;
+
+  transform: translateY(0);
+  // transition: transform 2s ease-in-out;
+  transition: transform 2s ease;
+
+  will-change: transform;
+  // 
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  width: 100%;
+  gap: 0.5rem; /* gap-2 */
+  background-color: #fff;
+  padding-top: 20px;
+  padding-bottom: 20px;
+  margin-bottom: 0;
+}
+.header__hidden {
+  transform: translateY(-100%);
+}

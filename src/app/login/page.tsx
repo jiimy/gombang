@@ -128,7 +128,7 @@ function LoginPageContent() {
     <div>
       <Header>로그인</Header>
       <div className="content p-6 flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <h1 className="mb-2 text-2xl font-bold">소셜 로그인</h1>
+        <h1 className="mb-2 text-2xl font-bold">로그인</h1>
 
         {errorMessage && (
           <div

@@ -71,24 +71,11 @@ export async function proxy(request: NextRequest) {
     }
 
     if (
-      request.nextUrl.pathname.startsWith("/bookmark") &&
+      request.nextUrl.pathname.startsWith("/record") &&
       user?.data?.user === null
     ) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
-    if (
-      request.nextUrl.pathname.startsWith("/upload") &&
-      user?.data?.user === null
-    ) {
-      return NextResponse.redirect(new URL("/login", request.url));
-    }
-    if (
-      request.nextUrl.pathname.startsWith("/support") &&
-      user?.data?.user === null
-    ) {
-      return NextResponse.redirect(new URL("/login", request.url));
-    }
-
     return response;
   } catch (e) {
     // If you are here, a Supabase client could not be created!

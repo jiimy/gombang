@@ -56,39 +56,36 @@ const MyPage = () => {
   }
 
   return (
-    <>
-      <div className="p-6">
-        <div className="mb-6">
-          <div className={s.title}>프로필</div>
-          <div className="flex items-center gap-4 mb-4">
-            {user.user_metadata?.avatar_url ? (
-              <Image
-                src={user.user_metadata.avatar_url}
-                alt="프로필"
-                width={64}
-                height={64}
-                className="rounded-full"
-              />
-            ) : (
-              <div className="flex items-center justify-center w-16 h-16 bg-gray-300 rounded-full">
-                {user.email?.charAt(0).toUpperCase()}
-              </div>
-            )}
-            <div>
-              <div className="font-semibold">
-                {user.user_metadata?.full_name || user.user_metadata?.name || '사용자'}
-              </div>
-              <div className="text-sm text-gray-500">{user.email}</div>
+    <div className="p-[16px]">
+      <div className="mb-6">
+        <div className="flex items-center gap-4 mb-4">
+          {user.user_metadata?.avatar_url ? (
+            <Image
+              src={user.user_metadata.avatar_url}
+              alt="프로필"
+              width={64}
+              height={64}
+              className="rounded-full"
+            />
+          ) : (
+            <div className="flex items-center justify-center w-16 h-16 bg-gray-300 rounded-full">
+              {user.email?.charAt(0).toUpperCase()}
             </div>
+          )}
+          <div>
+            <div className="font-semibold">
+              {user.user_metadata?.full_name || user.user_metadata?.name || '사용자'}
+            </div>
+            <div className="text-sm text-gray-500">{user.email}</div>
           </div>
-          <div className="input_wrap">
-            <input type="text" value={user.user_metadata?.full_name || user.email || ''} readOnly />
-          </div>
-          <div className="mt-2 input_wrap">
-            <Button onClick={handleLogout} variant="outline" className="w-full">
-              로그아웃
-            </Button>
-          </div>
+        </div>
+        {/* <div className="input_wrap">
+          <input type="text" value={user.user_metadata?.full_name || user.email || ''} readOnly />
+        </div> */}
+        <div className="mt-2 input_wrap">
+          <Button onClick={handleLogout} variant="outline" className="w-full">
+            로그아웃
+          </Button>
         </div>
       </div>
       <div>
@@ -97,9 +94,9 @@ const MyPage = () => {
             <button
               type="button"
               onClick={() => setGroupModalOpen(true)}
-              className="text-blue-600 underline underline-offset-2 hover:text-blue-800"
+              className=""
             >
-              (그룹 관리 열기)
+              그룹 관리 열기
             </button>
           </li>
           <li>
@@ -108,7 +105,7 @@ const MyPage = () => {
               onClick={() => {
                 setShareModalOpen(true);
               }}
-              className="text-blue-600 underline underline-offset-2 hover:text-blue-800"
+              className=""
             >
               공유하기 모달
             </button>
@@ -119,9 +116,9 @@ const MyPage = () => {
               onClick={() => {
                 router.push('/mypage/history');
               }}
-              className="text-blue-600 underline underline-offset-2 hover:text-blue-800"
+              className=""
             >
-              /mypage/history 로 이동
+              기록
             </button>
           </li>
           <li>
@@ -130,9 +127,9 @@ const MyPage = () => {
               onClick={() => {
                 router.push('/mypage/analysis');
               }}
-              className="text-blue-600 underline underline-offset-2 hover:text-blue-800"
+              className=""
             >
-              /mypage/analysis 로 이동
+              분석
             </button>
           </li>
           {/* <li>
@@ -179,7 +176,7 @@ const MyPage = () => {
         shareModalOpen &&
         <ShareModal setOnModal={setShareModalOpen} />
       }
-    </>
+    </div>
   );
 };
 

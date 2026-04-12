@@ -424,6 +424,10 @@ const SearchPage = () => {
             ))
           )}
         </div>
+        <div className="flex flex-col">
+        <div className="mb-1 text-sm text-zinc-600">{filterSummaryText}</div>
+        <div className="mb-2 text-sm text-zinc-600">총 {sortedRecords.length}개</div>
+        </div>
       </div>
       <div className="pt-2">
         {fetching ? (
@@ -433,8 +437,7 @@ const SearchPage = () => {
           <div className="text-sm text-red-500">{fetchError}</div>
         ) : (
           <>
-            <div className="mb-1 text-sm text-zinc-600">{filterSummaryText}</div>
-            <div className="mb-2 text-sm text-zinc-600">총 {sortedRecords.length}개</div>
+
             <RecordList records={sortedRecords} onSelectRecord={handleSelectRecord} />
           </>
         )}

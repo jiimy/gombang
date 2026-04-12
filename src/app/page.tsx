@@ -87,7 +87,6 @@ export default function Home() {
         </div>
       </Header>
       <div className="content">
-        {(isLoading || isFetchingNextPage) && "로딩중..."}
         {flattenedData.length > 0 && (
           <>
             {flattenedData.map((review: PublicRecordRow, idx: number) => (
@@ -96,6 +95,7 @@ export default function Home() {
             ))}
           </>
         )}
+        {(isLoading || isFetchingNextPage) && <div className="text-sm text-center text-gray-500">로딩중...</div>}
         <div ref={ref} style={{ height: '80px' }}></div>
       </div>
       <BottomMenu />

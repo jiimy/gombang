@@ -268,9 +268,10 @@ const ShareModal = ({ setOnModal }: ExportModalType) => {
     enabled: emptyEnabled(),
     selections: emptySelections(),
   });
-  const [shareHash] = useState(() => randomShareHash());
+  const [shareHash, setShareHash] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
 
   const { enabled, selections } = pick;
 
@@ -383,34 +384,24 @@ const ShareModal = ({ setOnModal }: ExportModalType) => {
   );
 
   const shareUrl = useMemo(() => {
-    if (typeof window === 'undefined') return '';
+    if (typeof window === 'undefined' || !shareHash) return '';
     const origin = window.location.origin;
     const path = `/@${safeSharePathNickname(sharerNickname)}/${shareHash}`;
     return `${origin}${path}`;
   }, [sharerNickname, shareHash]);
 
-  const persistSharePayload = useCallback(async () => {
+  const persistSharePayload = useCallback(async (hash: string) => {
     const res = await fetch('/api/shared-record', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ hash: shareHash, payload: sharePayloadV1 }),
+      body: JSON.stringify({ hash, payload: sharePayloadV1 }),
       credentials: 'include',
     });
     const j = (await res.json().catch(() => ({}))) as { error?: string };
     if (!res.ok) {
       throw new Error(typeof j.error === 'string' ? j.error : '공유 내용 저장에 실패했습니다.');
     }
-  }, [shareHash, sharePayloadV1]);
-
-  useEffect(() => {
-    if (!user?.email) return;
-    const t = window.setTimeout(() => {
-      void persistSharePayload().catch((e) => {
-        console.error('shared-record autosave:', e);
-      });
-    }, 800);
-    return () => window.clearTimeout(t);
-  }, [user?.email, persistSharePayload]);
+  }, [sharePayloadV1]);
 
   const fetchMyRecords = useCallback(async () => {
     if (!user?.email) {
@@ -498,10 +489,32 @@ const ShareModal = ({ setOnModal }: ExportModalType) => {
     });
   };
 
+  const createShareLink = async () => {
+    if (!user?.email) return;
+    try {
+      setCreating(true);
+      setSaveError(null);
+      setCopied(false);
+      const nextHash = randomShareHash();
+      await persistSharePayload(nextHash);
+      setShareHash(nextHash);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : '공유 링크 생성에 실패했습니다.';
+      setSaveError(msg);
+      alert(msg);
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const copyLink = async () => {
+    if (!shareHash || !shareUrl) {
+      alert('먼저 생성 버튼으로 공유 링크를 만들어 주세요.');
+      return;
+    }
     try {
       setSaveError(null);
-      await persistSharePayload();
+      await persistSharePayload(shareHash);
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
@@ -520,7 +533,7 @@ const ShareModal = ({ setOnModal }: ExportModalType) => {
       onClose
       dimClick={false}
     >
-      <Modal.Title>공유할 항목 선택</Modal.Title>
+      <Modal.Title>공유하기</Modal.Title>
 
       <div className="flex-1 min-h-0 pr-1 mt-3 space-y-4 overflow-y-auto">
         {!user?.email ? (
@@ -828,15 +841,25 @@ const ShareModal = ({ setOnModal }: ExportModalType) => {
             <div className="p-3 space-y-2 border rounded-lg border-zinc-200 bg-zinc-50">
               {saveError && <div className="text-xs text-red-600">{saveError}</div>}
               <div className="flex gap-2">
+                <button
+                  type="button"
+                  className="px-3 text-xs text-white rounded-md h-9 shrink-0 bg-zinc-700 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
+                  onClick={() => void createShareLink()}
+                  disabled={creating}
+                >
+                  {creating ? '생성중...' : '생성'}
+                </button>
                 <input
                   readOnly
                   className="flex-1 min-w-0 px-2 text-xs bg-white border rounded h-9 border-zinc-200"
                   value={shareUrl}
+                  placeholder="생성 버튼을 눌러 공유 링크를 만드세요."
                 />
                 <button
                   type="button"
-                  className="px-3 text-xs text-white bg-blue-600 rounded-md h-9 shrink-0 hover:bg-blue-700"
+                  className="px-3 text-xs text-white bg-blue-600 rounded-md h-9 shrink-0 hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
                   onClick={() => void copyLink()}
+                  disabled={!shareHash || creating}
                 >
                   {copied ? '복사됨' : '복사'}
                 </button>

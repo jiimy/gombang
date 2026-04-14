@@ -95,7 +95,7 @@ export default function Home() {
             ))}
           </>
         )}
-        {(isLoading || isFetchingNextPage) && <div className="text-sm text-center text-gray-500">로딩중...</div>}
+        {(isLoading || isFetchingNextPage) && <div className="text-sm text-left text-gray-500">로딩중...</div>}
         <div ref={ref} style={{ height: '80px' }}></div>
       </div>
       <BottomMenu />

@@ -88,7 +88,7 @@ const MyPage = () => {
           </Button>
         </div>
       </div>
-      <div>
+      <div className={s.list}>
         <ul>
           <li>
             <button
@@ -96,7 +96,7 @@ const MyPage = () => {
               onClick={() => setGroupModalOpen(true)}
               className=""
             >
-              그룹 관리 열기
+              그룹 관리
             </button>
           </li>
           <li>
@@ -107,9 +107,10 @@ const MyPage = () => {
               }}
               className=""
             >
-              공유하기 모달
+              공유하기
             </button>
           </li>
+          <li><hr className="my-3"/></li>
           <li>
             <button
               type="button"
@@ -145,8 +146,9 @@ const MyPage = () => {
           </li> */}
         </ul>
       </div>
-      <div className="py-6">
-        <p className="mb-3 text-gray-500">새 기록 작성 시 공개 설정</p>
+      <hr className="my-2"/>
+      <div className="">
+        <p className="mb-1 text-gray-500 text-sm">새 기록 작성 시 공개 설정</p>
         <div className="flex flex-col gap-2 sm:flex-row sm:gap-6">
           <label className="flex items-center gap-2 text-sm cursor-pointer">
             <input

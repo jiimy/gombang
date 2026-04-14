@@ -176,7 +176,7 @@ const SharedModal = ({ setOnModal }: ExportModalType) => {
       onClose
       dimClick={false}
     >
-      <Modal.Title>내 공유 URL</Modal.Title>
+      <Modal.Title>내 공유 기록</Modal.Title>
       <div className="min-h-0 mt-4">
         {!user ? (
           <div className="py-8 text-sm text-center text-zinc-500">로그인이 필요합니다.</div>

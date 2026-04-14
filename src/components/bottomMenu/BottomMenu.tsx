@@ -40,9 +40,9 @@ const BottomMenu = ({ type = 'menu', children }: bottommenuType) => {
                 <Link href="/">
                   {
                     route == '' ?
-                      <HomeFilled style={iconStyle} size={26} />
+                      <HomeFilled style={iconStyle} size={22} />
                       :
-                      <HomeOutlined style={iconStyle} size={26} />
+                      <HomeOutlined style={iconStyle} size={22} />
                   }
                   {/* <span>홈</span> */}
                 </Link>
@@ -52,11 +52,11 @@ const BottomMenu = ({ type = 'menu', children }: bottommenuType) => {
                   {
                     route == 'record' ?
                       <span style={iconStyle}>
-                        <BookmarkFill width={26} height={26} />
+                        <BookmarkFill width={22} height={22} />
                       </span>
                       :
                       <span style={iconStyle}>
-                        <BookmarkLine width={26} height={26} />
+                        <BookmarkLine width={22} height={22} />
                       </span>
                   }
                   {/* <span>기록하기</span> */}
@@ -67,10 +67,10 @@ const BottomMenu = ({ type = 'menu', children }: bottommenuType) => {
                   {
                     route == 'mypage' ?
                       <span style={iconStyle}>
-                        <User fill='#8C8C8C' width={26} height={26} />
+                        <User fill='#8C8C8C' width={22} height={22} />
                       </span>
                       :
-                      <UserOutlined style={iconStyle} size={26} />
+                      <UserOutlined style={iconStyle} size={22} />
                   }
                   {/* <span>마이</span> */}
                 </Link>

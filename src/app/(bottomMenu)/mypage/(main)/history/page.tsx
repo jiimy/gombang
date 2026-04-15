@@ -48,6 +48,11 @@ function rowMatchesCategorySelection(
   if (cat === 'genre') {
     return splitGenres(row.genre).includes(sel);
   }
+  if (cat === 'group_name') {
+    const groupName = row.group_name?.trim();
+    const normalizedGroupName = groupName ? groupName : '그룹없음';
+    return normalizedGroupName === sel;
+  }
   return (row[cat] ?? '').trim() === sel;
 }
 
@@ -250,6 +255,9 @@ const SearchPage = () => {
     recordsForCategoryOptions.forEach((row) => {
       if (activeCategory === 'genre') {
         splitGenres(row.genre).forEach((g) => unique.add(g));
+      } else if (activeCategory === 'group_name') {
+        const groupName = row.group_name?.trim();
+        unique.add(groupName ? groupName : '그룹없음');
       } else {
         const value = row[activeCategory];
         if (value?.trim()) unique.add(value.trim());

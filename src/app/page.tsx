@@ -8,6 +8,7 @@ import { fetchPublicRecords, PublicRecordRow } from "@/api/record";
 import { useEffect, useState } from "react";
 import ReviewItem from "@/components/reviewList/ReviewItem";
 
+
 export default function Home() {
   const [ref, isView] = useInView();
   const size = 10; // 한 페이지당 아이템 수

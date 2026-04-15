@@ -496,7 +496,7 @@ const Record = ({
 
         <div>
           <label className="block mb-1 text-sm font-medium text-zinc-700">
-            {includeTime ? '날짜/시간' : '날짜'}
+            {includeTime ? '날짜/시간' : '날짜'} <span className="text-red-500">*</span>
           </label>
           <Input
             type={includeTime ? 'datetime-local' : 'date'}

@@ -30,7 +30,7 @@ const ReviewItem = ({ review }: ReviewItemProps & { style?: React.CSSProperties 
 
       {
         review.recomm_person_count != null && (
-          <div>추천 : {review.recomm_person_count}</div>
+          <div>추천인원 : {review.recomm_person_count}</div>
         )
       }
 

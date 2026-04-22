@@ -35,7 +35,7 @@ export async function GET() {
     const { data, error } = await supabase
       .from("theme")
       .upsert(rows, {
-        onConflict: "themename,location",
+        onConflict: "location,shop_name,themename",
         ignoreDuplicates: true,
       });
 

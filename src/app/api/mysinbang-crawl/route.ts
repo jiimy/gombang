@@ -75,7 +75,8 @@ export async function GET() {
 
     // Supabase upsert (테이블명과 충돌 컬럼은 실제 구조에 맞게 수정 필요)
     const { error } = await supabase.from('theme').upsert(themes, {
-      onConflict: 'themename, location',
+      onConflict: 'location, shop_name, themename',
+      ignoreDuplicates: true,
     });
 
     if (error) throw error;

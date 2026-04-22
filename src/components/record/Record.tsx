@@ -532,7 +532,14 @@ const Record = ({
 
         <div>
           <label className="block mb-1 text-sm font-medium text-zinc-700">매장명</label>
-          <Input {...register('shopName')} placeholder="매장명 (테마 선택 시 자동 입력)" />
+          <Input
+            {...register('shopName')}
+            placeholder="매장명 (테마 선택 시 자동 입력)"
+            readOnly
+            className="cursor-not-allowed bg-zinc-100 text-zinc-500"
+            style={{ opacity: 1 }}
+          />
+    
         </div>
 
         <div>

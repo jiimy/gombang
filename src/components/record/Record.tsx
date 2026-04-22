@@ -598,7 +598,7 @@ const Record = ({
               onChange={(e) => handleIncludeTimeChange(e.target.checked)}
               className="rounded border-zinc-300"
             />
-            시간도 입력
+            시간 추가
           </label>
         </div>
 
@@ -609,7 +609,7 @@ const Record = ({
 
         <div>
           <label className="block mb-1 text-sm font-medium text-zinc-700">위치</label>
-          <Input {...register('location')} placeholder="위치 입력" />
+          <Input {...register('location')} placeholder="예: 홍대, 강남.." />
         </div>
 
         <div>
@@ -631,7 +631,7 @@ const Record = ({
             control={control}
             render={({ field }) => (
               <Input
-                placeholder="숫자 입력"
+                placeholder="0"
                 inputMode="numeric"
                 value={field.value}
                 onChange={(e) => field.onChange(formatPrice(e.target.value))}
@@ -692,7 +692,7 @@ const Record = ({
 
         <div>
           <label className="block mb-1 text-sm font-medium text-zinc-700">추천인원</label>
-          <Input {...register('recommendedPeople')} placeholder="예: 2~4명" />
+          <Input {...register('recommendedPeople')} placeholder="예: 2~4" />
         </div>
 
         <div>

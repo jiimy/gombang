@@ -395,6 +395,12 @@ const Record = ({
       const trimmedThemeName = data.themeName?.trim();
       if (!trimmedThemeName) return;
 
+      if (!data.shopName?.trim()) {
+        alert('없는 테마입니다');
+        themeInputRef.current?.focus();
+        return;
+      }
+
       const userName = user?.user_metadata?.full_name || user?.user_metadata?.name;
 
       const { data: existing, error } = await supabase
@@ -440,6 +446,12 @@ const Record = ({
   const submitEdit: SubmitHandler<formType> = async (data) => {
     if (!recordId) {
       alert('수정할 기록 ID가 없습니다.');
+      return;
+    }
+
+    if (!data.shopName?.trim()) {
+      alert('없는 테마입니다');
+      themeInputRef.current?.focus();
       return;
     }
 

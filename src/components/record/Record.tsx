@@ -118,6 +118,7 @@ const Record = ({
   const { user } = useAuth();
   const [themeSuggestions, setThemeSuggestions] = useState<ThemeRow[]>([]);
   const [themeDropdownOpen, setThemeDropdownOpen] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [includeTime, setIncludeTime] = useState(false);
   const themeInputRef = useRef<HTMLInputElement>(null);
   const dateInputRef = useRef<HTMLInputElement>(null);
@@ -164,6 +165,7 @@ const Record = ({
   const partPersonCount = useWatch({ control, name: 'partPersonCount', defaultValue: '' });
   const watchedDate = useWatch({ control, name: 'date', defaultValue: '' });
   const dateField = register('date');
+  const themeField = register('themeName', { required: '테마명을 입력하세요' });
   const autoParticipantCount = useMemo(
     () => parseParticipantCount(participants ?? ''),
     [participants]
@@ -204,6 +206,8 @@ const Record = ({
     [supabase]
   );
 
+  const userTypingRef = useRef(false);
+
   useEffect(() => {
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
     searchTimeoutRef.current = setTimeout(() => {
@@ -213,6 +217,18 @@ const Record = ({
       if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
     };
   }, [themeName, searchThemes]);
+
+  useEffect(() => {
+    if (themeSuggestions.length > 0 && userTypingRef.current) {
+      setThemeDropdownOpen(true);
+    }
+  }, [themeSuggestions]);
+
+  useEffect(() => {
+    if (!themeName?.trim()) {
+      setValue('shopName', '', { shouldDirty: false });
+    }
+  }, [themeName, setValue]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -230,13 +246,51 @@ const Record = ({
   }, []);
 
   const onSelectTheme = (row: ThemeRow) => {
+    userTypingRef.current = false;
     setValue('themeName', row.themename);
     if (row.shop_name) setValue('shopName', row.shop_name);
     setThemeSuggestions([]);
     setThemeDropdownOpen(false);
+    setHighlightedIndex(-1);
+  };
+
+  useEffect(() => {
+    setHighlightedIndex(-1);
+  }, [themeSuggestions]);
+
+  const handleThemeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!themeDropdownOpen || themeSuggestions.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightedIndex((prev) => (prev + 1) % themeSuggestions.length);
+      return;
+    }
+
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightedIndex((prev) =>
+        prev <= 0 ? themeSuggestions.length - 1 : prev - 1
+      );
+      return;
+    }
+
+    if (e.key === 'Enter') {
+      if (highlightedIndex >= 0 && highlightedIndex < themeSuggestions.length) {
+        e.preventDefault();
+        onSelectTheme(themeSuggestions[highlightedIndex]);
+      }
+      return;
+    }
+
+    if (e.key === 'Escape') {
+      setThemeDropdownOpen(false);
+      setHighlightedIndex(-1);
+    }
   };
 
   const resetAllInputs = () => {
+    userTypingRef.current = false;
     reset({ ...defaultValues, commentPublic: readDefaultCommentPublic() });
     setIncludeTime(false);
     setThemeDropdownOpen(false);
@@ -464,12 +518,18 @@ const Record = ({
             테마명 <span className="text-red-500">*</span>
           </label>
           <Input
-            {...register('themeName', { required: '테마명을 입력하세요' })}
+            {...themeField}
             placeholder="테마명 입력"
             className={cn(errors.themeName && 'border-red-500')}
             onFocus={() => setThemeDropdownOpen(true)}
+            onChange={(e) => {
+              userTypingRef.current = true;
+              themeField.onChange(e);
+              setThemeDropdownOpen(true);
+            }}
+            onKeyDown={handleThemeKeyDown}
             ref={(e) => {
-              register('themeName').ref(e);
+              themeField.ref(e);
               themeInputRef.current = e;
             }}
             autoComplete="off"
@@ -483,7 +543,11 @@ const Record = ({
                 <li key={`${row.themename}-${i}`}>
                   <button
                     type="button"
-                    className="w-full px-3 py-2 text-sm text-left hover:bg-zinc-100"
+                    className={cn(
+                      'w-full px-3 py-2 text-sm text-left hover:bg-zinc-100',
+                      highlightedIndex === i && 'bg-zinc-100'
+                    )}
+                    onMouseEnter={() => setHighlightedIndex(i)}
                     onClick={() => onSelectTheme(row)}
                   >
                     {row.themename}
@@ -695,26 +759,6 @@ const Record = ({
             );
           }}
         />
-      )}
-
-      {!isEditMode && confirmModalOpen && (
-        <ConfirmModal
-          setOnModal={setConfirmModalOpen}
-          dimClick={false}
-          title="이미 저장된 테마입니다. 다시 저장할까요?"
-          onConfirm={async () => {
-            if (!pendingSaveData) return;
-            await doSaveAfterConfirm(pendingSaveData);
-          }}
-          onCancel={() => {
-            setPendingSaveData(null);
-          }}
-        >
-          <div className="text-sm text-zinc-700">
-            같은 <span className="font-medium">테마명</span>이 이미 기록되어 있습니다.
-            확인을 누르면 저장이 진행되고, 취소하면 저장하지 않습니다.
-          </div>
-        </ConfirmModal>
       )}
     </div>
   );

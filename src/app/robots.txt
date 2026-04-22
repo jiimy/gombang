@@ -1,0 +1,4 @@
+
+User-Agent: *
+Allow: /
+Sitemap: https://gombang.vercel.app//sitemap.xml

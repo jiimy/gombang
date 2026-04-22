@@ -12,7 +12,9 @@ export const metadata: Metadata = {
 
   title: "곰방",
   description: "방탈출 기록을 관리하고 공유하는 서비스",
-
+  verification: {
+    google: '<meta name="google-site-verification" content="4kIu_8bINkiduTRiLtTNUYuw-pKWhPhPeSU1wkEb2yU" />'
+  },
   openGraph: {
     title: "곰방",
     description: "방탈출 기록을 관리하고 공유하는 서비스",

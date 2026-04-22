@@ -37,19 +37,22 @@ const defaultValues: formType = {
   spoiler: '',
 };
 
+const MAX_PRICE = 999999;
+
 function formatPrice(value: string): string {
-  const num = value.replace(/,/g, '');
-  if (num === '' || isNaN(Number(num))) return value.replace(/[^0-9,]/g, '');
-  return Number(num).toLocaleString();
+  const digitsOnly = value.replace(/[^0-9]/g, '');
+  if (digitsOnly === '') return '';
+  const clamped = Math.min(Number(digitsOnly), MAX_PRICE);
+  return clamped.toLocaleString();
 }
 
 function parseParticipantCount(participants: string): number {
-  if (!participants?.trim()) return 0;
+  if (!participants?.trim()) return 1;
   const tokens = participants
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
-  if (tokens.length === 0) return 0;
+  if (tokens.length === 0) return 1;
 
   const baseCount = tokens.length + 1;
   const extraFromNumericTokens = tokens.reduce((sum, token) => {
@@ -551,6 +554,9 @@ const Record = ({
                     onClick={() => onSelectTheme(row)}
                   >
                     {row.themename}
+                    {row.shop_name && (
+                      <span className="text-zinc-500"> ( {row.shop_name} )</span>
+                    )}
                   </button>
                 </li>
               ))}
@@ -614,6 +620,7 @@ const Record = ({
             render={({ field }) => (
               <Input
                 placeholder="숫자 입력"
+                inputMode="numeric"
                 value={field.value}
                 onChange={(e) => field.onChange(formatPrice(e.target.value))}
               />

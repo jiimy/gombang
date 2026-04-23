@@ -12,6 +12,7 @@ import {
   subscribeDefaultCommentPublic,
   writeDefaultCommentPublic,
 } from '@/util/commentPublicPreference';
+import Update from '@/components/update/Update';
 
 const MyPage = () => {
   const router = useRouter();
@@ -90,6 +91,15 @@ const MyPage = () => {
       </div>
       <div className={s.list}>
         <ul>
+          {/* <li>
+            <button
+              type="button"
+              onClick={() => router.push('/updateHistory')}
+              className=""
+            >
+              업데이트 기록
+            </button>
+          </li> */}
           <li>
             <button
               type="button"
@@ -148,7 +158,7 @@ const MyPage = () => {
       </div>
       <hr className="my-2"/>
       <div className="">
-        <p className="mb-1 text-gray-500 text-sm">새 기록 작성 시 공개 설정</p>
+        <p className="mb-1 text-sm text-gray-500">새 기록 작성 시 공개 설정</p>
         <div className="flex flex-col gap-2 sm:flex-row sm:gap-6">
           <label className="flex items-center gap-2 text-sm cursor-pointer">
             <input
@@ -170,6 +180,7 @@ const MyPage = () => {
           </label>
         </div>
       </div>
+      <Update/>
       {
         groupModalOpen &&
         <GroupModal setOnModal={setGroupModalOpen} />

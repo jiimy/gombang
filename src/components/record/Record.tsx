@@ -608,7 +608,7 @@ const Record = ({
         </div>
 
         <div>
-          <label className="block mb-1 text-sm font-medium text-zinc-700">장르</label>
+          <label className="block mb-1 text-sm font-medium text-zinc-700">장르 <span className="text-[12px] text-zinc-500">구분이 안될경우 미입력시 [미지정]으로 구분됩니다.</span></label>
           <Input {...register('genre')} placeholder="예: 공포, 추리, 감성, 코믹..." />
         </div>
 

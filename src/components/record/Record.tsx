@@ -9,7 +9,9 @@ import { Input } from '@/components/ui/input';
 import ConfirmModal from '@/components/portalModal/confirmModal/ConfirmModal';
 import { useAuth } from '@/hooks/useAuth';
 import GroupSelectModal from '@/components/portalModal/groupSelectModal/GroupSelectModal';
+import { AiOutlineExclamationCircle } from "react-icons/ai";
 import { readDefaultCommentPublic } from '@/util/commentPublicPreference';
+import Tooltip from '../tooltip/Tooltip';
 
 type ThemeRow = { themename: string; shop_name: string | null };
 type UserGroupRow = { group_name: string | null; name: string | null };
@@ -529,7 +531,10 @@ const Record = ({
         className="w-full space-y-5"
       >
         <div className="relative" ref={dropdownRef}>
-          <label className="block mb-1 text-sm font-medium text-zinc-700">
+          <Tooltip className="absolute top-0 right-0 z-10" text="방탈출 테마 데이터는 https://colory.mooo.com/bba/catalogue 에 기반합니다. 만약 없는 테마를 입력하시고 싶다면 문의를 남겨주세요.">
+            <strong><AiOutlineExclamationCircle size={20} /></strong>
+          </Tooltip>
+          <label className="relative block mb-1 text-sm font-medium text-zinc-700">
             테마명 <span className="text-red-500">*</span>
           </label>
           <Input
@@ -621,7 +626,7 @@ const Record = ({
             className="cursor-not-allowed bg-zinc-100 text-zinc-500"
             style={{ opacity: 1 }}
           />
-    
+
         </div>
 
         <div>

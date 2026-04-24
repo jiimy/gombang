@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 import { createClient } from '@/util/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import BasicModal from '@/components/portalModal/basicModal/BasicModal';
 
 type AnalysisRecordRow = {
   genre: string | null;
@@ -18,6 +19,14 @@ type AnalysisRecordRow = {
   group_name: string | null;
   participant: string | null;
   date: string | null;
+  themename: string | null;
+  shop_name: string | null;
+};
+
+type DetailRecord = {
+  themename: string | null;
+  date: string | null;
+  shop_name: string | null;
 };
 
 const PIE_COLORS = [
@@ -184,10 +193,12 @@ function RecordPieSection({
   title,
   data,
   layout = 'pie',
+  onItemClick,
 }: {
   title: string;
   data: { name: string; value: number }[];
   layout?: 'pie' | 'ranking';
+  onItemClick?: (label: string) => void;
 }) {
   const [sortState, setSortState] = useState<ChartSortState>({
     kind: 'count',
@@ -260,7 +271,17 @@ function RecordPieSection({
             return (
               <li
                 key={`${row.name}-${i}`}
-                className="flex items-center min-w-0 gap-3 text-sm"
+                className="flex items-center min-w-0 gap-3 text-sm cursor-pointer hover:bg-zinc-50 rounded-md px-1 -mx-1"
+                onClick={() => onItemClick?.(row.name)}
+                role={onItemClick ? 'button' : undefined}
+                tabIndex={onItemClick ? 0 : undefined}
+                onKeyDown={(e) => {
+                  if (!onItemClick) return;
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onItemClick(row.name);
+                  }
+                }}
               >
                 <span
                   className="truncate w-22 shrink-0 text-zinc-800"
@@ -318,6 +339,11 @@ const AnalysisPage = () => {
   const [records, setRecords] = useState<AnalysisRecordRow[]>([]);
   const [fetching, setFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [detailModal, setDetailModal] = useState<{
+    title: string;
+    items: DetailRecord[];
+  } | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -330,7 +356,7 @@ const AnalysisPage = () => {
       try {
         const { data, error } = await supabase
           .from('record')
-          .select('genre,part_person_count,group_name,participant,date')
+          .select('genre,part_person_count,group_name,participant,date,themename,shop_name')
           .eq('email', user.email)
           .order('id', { ascending: false });
 
@@ -389,6 +415,91 @@ const AnalysisPage = () => {
     [records],
   );
 
+  const toDetail = (r: AnalysisRecordRow): DetailRecord => ({
+    themename: r.themename,
+    date: r.date,
+    shop_name: r.shop_name,
+  });
+
+  const openDetailModal = (title: string, items: DetailRecord[]) => {
+    setDetailModal({ title, items });
+    setIsDetailModalOpen(true);
+  };
+
+  const handleCommaLabelClick = (
+    sectionTitle: string,
+    label: string,
+    keyFn: (r: AnalysisRecordRow) => string,
+    emptyLabel: string,
+  ) => {
+    const items = records
+      .filter((r) => {
+        const parts = splitCommaLabels(keyFn(r));
+        if (parts.length === 0) return label === emptyLabel;
+        return parts.includes(label);
+      })
+      .map(toDetail);
+    openDetailModal(`${sectionTitle} · ${label}`, items);
+  };
+
+  const handleGenreClick = (label: string) =>
+    handleCommaLabelClick(
+      '장르',
+      label,
+      (r) => (r.genre?.trim() ? r.genre.trim() : '미지정'),
+      '미지정',
+    );
+
+  const handleMonthClick = (label: string) => {
+    const items = records.filter((r) => monthLabel(r.date) === label).map(toDetail);
+    openDetailModal(`월별 · ${label}`, items);
+  };
+
+  const handlePartCountClick = (label: string) =>
+    handleCommaLabelClick(
+      '참여 인원',
+      label,
+      (r) => {
+        const n = r.part_person_count;
+        if (n == null || Number.isNaN(Number(n))) return '미지정';
+        return `${Number(n)}명`;
+      },
+      '미지정',
+    );
+
+  const handleGroupClick = (label: string) =>
+    handleCommaLabelClick(
+      '그룹',
+      label,
+      (r) => (r.group_name?.trim() ? r.group_name.trim() : '그룹 없음'),
+      '그룹 없음',
+    );
+
+  const handleParticipantClick = (label: string) => {
+    const suffixMatch = label.match(/^(.+?)\s+(\d+)$/);
+    const prefixCandidate = suffixMatch ? suffixMatch[1] : null;
+
+    const items = records
+      .filter((r) => {
+        const commaParts = splitParticipantCommaParts(r.participant);
+        if (commaParts.length === 0) return label === '미입력';
+        for (const part of commaParts) {
+          const subs = splitCommaLabels(part.trim());
+          for (const sub of subs) {
+            const parsed = tryParseParticipantNumericSegment(sub);
+            if (parsed) {
+              if (prefixCandidate && parsed.prefix === prefixCandidate) return true;
+            } else if (sub.trim() === label) {
+              return true;
+            }
+          }
+        }
+        return false;
+      })
+      .map(toDetail);
+    openDetailModal(`참여자 · ${label}`, items);
+  };
+
   if (loading) {
     return <div className="p-4 text-sm text-zinc-500">로딩 중...</div>;
   }
@@ -410,18 +521,69 @@ const AnalysisPage = () => {
             내 기록 {records.length}건 기준 ({user.email})
           </p>
           <div className="flex flex-col gap-[16px]">
-            <RecordPieSection title="장르" data={genreData} layout="ranking"/>
-                <RecordPieSection title="월별" data={monthData} layout="ranking" />
-            <RecordPieSection title="참여 인원" data={partCountData} layout="ranking"/>
-            <RecordPieSection title="그룹" data={groupData} layout="ranking"/>
+            <RecordPieSection
+              title="장르"
+              data={genreData}
+              layout="ranking"
+              onItemClick={handleGenreClick}
+            />
+            <RecordPieSection
+              title="월별"
+              data={monthData}
+              layout="ranking"
+              onItemClick={handleMonthClick}
+            />
+            <RecordPieSection
+              title="참여 인원"
+              data={partCountData}
+              layout="ranking"
+              onItemClick={handlePartCountClick}
+            />
+            <RecordPieSection
+              title="그룹"
+              data={groupData}
+              layout="ranking"
+              onItemClick={handleGroupClick}
+            />
             <RecordPieSection
               title="참여자"
               data={participantData}
               layout="ranking"
+              onItemClick={handleParticipantClick}
             />
-            
+
           </div>
         </>
+      )}
+      {isDetailModalOpen && detailModal && (
+        <BasicModal setOnModal={setIsDetailModalOpen} dimClick>
+          <div className="flex flex-col gap-3 min-w-[260px] max-w-[80vw]">
+            <h3 className="text-base font-semibold text-zinc-900 pr-6">
+              {detailModal.title}
+            </h3>
+            <p className="text-xs text-zinc-500">총 {detailModal.items.length}건</p>
+            {detailModal.items.length === 0 ? (
+              <p className="text-sm text-zinc-500">표시할 기록이 없습니다.</p>
+            ) : (
+              <ul className="max-h-[60vh] overflow-y-auto divide-y divide-zinc-100">
+                {detailModal.items.map((item, i) => (
+                  <li key={i} className="py-2 flex flex-col gap-1 text-sm">
+                    <span className="font-medium text-zinc-900 truncate">
+                      {item.themename?.trim() || '테마명 없음'}
+                    </span>
+                    <div className="flex gap-2 text-xs text-zinc-600">
+                      <span>{item.date?.trim() || '날짜 없음'}</span>
+                      <span className="text-zinc-300">·</span>
+                      <span className="truncate">
+                        {item.shop_name?.trim() || '매장명 없음'}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </BasicModal>
       )}
     </div>
   );

@@ -120,7 +120,7 @@ const MyPage = () => {
               공유하기
             </button>
           </li>
-          <li><hr className="my-3"/></li>
+          <li><hr className="my-3" /></li>
           <li>
             <button
               type="button"
@@ -143,6 +143,17 @@ const MyPage = () => {
               분석
             </button>
           </li>
+          {/* <li>
+            <button
+              type="button"
+              onClick={() => {
+                // router.push('/mypage/analysis');
+              }}
+              className=""
+            >
+              문의하기
+            </button>
+          </li> */}
           {/* <li>
             <button
               type="button"
@@ -179,7 +190,7 @@ const MyPage = () => {
           </label>
         </div>
       </div> */}
-      <Update/>
+      <Update />
       {
         groupModalOpen &&
         <GroupModal setOnModal={setGroupModalOpen} />

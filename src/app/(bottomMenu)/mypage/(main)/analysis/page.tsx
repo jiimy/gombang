@@ -27,8 +27,10 @@ type AnalysisRecordRow = {
 
 type DetailRecord = {
   themename: string | null;
+  genre: string | null;
   date: string | null;
   shop_name: string | null;
+  price: string | null;
 };
 
 const SECTION_NAV: { id: string; label: string }[] = [
@@ -38,7 +40,6 @@ const SECTION_NAV: { id: string; label: string }[] = [
   { id: 'section-group', label: '그룹' },
   { id: 'section-participant', label: '참여자' },
   { id: 'section-theme-price', label: '테마별 가격' },
-  { id: 'section-month-price', label: '월별 가격 총합' },
 ];
 
 const PIE_COLORS = [
@@ -192,10 +193,10 @@ type ChartSortState = {
   countDesc: boolean;
 };
 
-function sortChartData(
-  data: { name: string; value: number }[],
+function sortChartData<T extends { name: string; value: number }>(
+  data: T[],
   state: ChartSortState,
-): { name: string; value: number }[] {
+): T[] {
   const copy = [...data];
   if (state.kind === 'name') {
     copy.sort((a, b) => {
@@ -218,14 +219,18 @@ function RecordPieSection({
   onItemClick,
   valueFormatter,
   showTotal = false,
+  type,
+  secondaryFormatter,
 }: {
   id?: string;
   title: string;
-  data: { name: string; value: number }[];
+  data: { name: string; value: number; secondaryValue?: number }[];
   layout?: 'pie' | 'ranking';
   onItemClick?: (label: string) => void;
   valueFormatter?: (value: number) => string;
   showTotal?: boolean;
+  type?: string;
+  secondaryFormatter?: (value: number) => string;
 }) {
   const [sortState, setSortState] = useState<ChartSortState>({
     kind: 'count',
@@ -246,6 +251,17 @@ function RecordPieSection({
     [sortedData],
   );
 
+  const totalSecondaryValue = useMemo(
+    () =>
+      sortedData.reduce((acc, d) => acc + (d.secondaryValue ?? 0), 0),
+    [sortedData],
+  );
+
+  const hasSecondary = useMemo(
+    () => sortedData.some((d) => d.secondaryValue !== undefined),
+    [sortedData],
+  );
+
   const sortBtnClass = (active: boolean) =>
     [
       'rounded-md px-2 py-1 text-xs font-medium transition-colors',
@@ -260,45 +276,53 @@ function RecordPieSection({
       className="p-4 bg-white border rounded-lg shadow-sm border-zinc-200 scroll-mt-20"
     >
       <div className="flex flex-col gap-2 mb-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <h2 className="text-sm font-semibold text-zinc-900">{title}</h2>
+        <h2 className="text-sm font-semibold text-zinc-900">
+          {title} &nbsp;
+          {type == 'genre-price-total' && <span className="text-xs text-zinc-500">(중복 장르 포함)</span>}
+          </h2>
         {hasData ? (
           <div className="flex flex-wrap items-center gap-2">
             {showTotal ? (
               <span className="text-xs font-semibold tabular-nums text-zinc-900">
                 총 {valueFormatter ? valueFormatter(totalValue) : totalValue.toLocaleString()}
+                {hasSecondary && secondaryFormatter ? (
+                  <span className="ml-1 font-normal text-zinc-500">
+                    / {secondaryFormatter(totalSecondaryValue)}
+                  </span>
+                ) : null}
               </span>
             ) : null}
             <div className="flex flex-wrap gap-1">
-            <button
-              type="button"
-              className={sortBtnClass(sortState.kind === 'name')}
-              onClick={() =>
-                setSortState((prev) =>
-                  prev.kind === 'name'
-                    ? { ...prev, nameAsc: !prev.nameAsc }
-                    : { ...prev, kind: 'name' },
-                )
-              }
-            >
-              {sortState.kind === 'name'
-                ? sortState.nameAsc
-                  ? 'ㄱ~ㅎ'
-                  : 'ㄱ~ㅎ'
-                : 'ㄱ~ㅎ'}
-            </button>
-            <button
-              type="button"
-              className={sortBtnClass(sortState.kind === 'count')}
-              onClick={() =>
-                setSortState((prev) =>
-                  prev.kind === 'count'
-                    ? { ...prev, countDesc: !prev.countDesc }
-                    : { ...prev, kind: 'count' },
-                )
-              }
-            >
-              {sortState.countDesc ? '많은순' : '적은순'}
-            </button>
+              <button
+                type="button"
+                className={sortBtnClass(sortState.kind === 'name')}
+                onClick={() =>
+                  setSortState((prev) =>
+                    prev.kind === 'name'
+                      ? { ...prev, nameAsc: !prev.nameAsc }
+                      : { ...prev, kind: 'name' },
+                  )
+                }
+              >
+                {sortState.kind === 'name'
+                  ? sortState.nameAsc
+                    ? 'ㄱ~ㅎ'
+                    : 'ㄱ~ㅎ'
+                  : 'ㄱ~ㅎ'}
+              </button>
+              <button
+                type="button"
+                className={sortBtnClass(sortState.kind === 'count')}
+                onClick={() =>
+                  setSortState((prev) =>
+                    prev.kind === 'count'
+                      ? { ...prev, countDesc: !prev.countDesc }
+                      : { ...prev, kind: 'count' },
+                  )
+                }
+              >
+                {sortState.countDesc ? '많은순' : '적은순'}
+              </button>
             </div>
           </div>
         ) : null}
@@ -338,8 +362,15 @@ function RecordPieSection({
                       style={{ width: `${pct}%`, backgroundColor: barColor }}
                     />
                   </div>
-                  <span className="font-medium text-right min-w-10 shrink-0 tabular-nums text-zinc-900">
-                    {valueFormatter ? valueFormatter(row.value) : row.value}
+                  <span className="flex flex-col items-end font-medium text-right min-w-10 shrink-0 tabular-nums text-zinc-900">
+                    <span>
+                      {valueFormatter ? valueFormatter(row.value) : row.value}
+                    </span>
+                    {secondaryFormatter && row.secondaryValue !== undefined ? (
+                      <span className="text-[11px] font-normal text-zinc-500">
+                        {secondaryFormatter(row.secondaryValue)}
+                      </span>
+                    ) : null}
                   </span>
                 </div>
               </li>
@@ -415,15 +446,30 @@ const AnalysisPage = () => {
     void load();
   }, [supabase, user?.email]);
 
-  const genreData = useMemo(
-    () =>
-      aggregateByCommaSeparated(
-        records,
-        (r) => (r.genre?.trim() ? r.genre.trim() : '미지정'),
-        '미지정',
-      ),
-    [records],
-  );
+  /** 장르별 가격 총합(원) + 건수. 쉼표로 묶인 장르는 각 장르에 모두 합산.
+   * 가격 미입력 record는 가격 합계에서만 제외, 건수는 항상 카운트 */
+  const genreData = useMemo(() => {
+    const map = new Map<string, { priceSum: number; count: number }>();
+    for (const r of records) {
+      const raw = r.genre?.trim() ? r.genre.trim() : '미지정';
+      const parts = splitCommaLabels(raw);
+      const labels = parts.length === 0 ? ['미지정'] : parts;
+      const priceNum = parsePrice(r.price);
+      for (const label of labels) {
+        const cur = map.get(label) ?? { priceSum: 0, count: 0 };
+        cur.count += 1;
+        if (priceNum != null) cur.priceSum += priceNum;
+        map.set(label, cur);
+      }
+    }
+    return Array.from(map.entries())
+      .map(([name, { priceSum, count }]) => ({
+        name,
+        value: priceSum,
+        secondaryValue: count,
+      }))
+      .sort((a, b) => b.value - a.value);
+  }, [records]);
 
   const partCountData = useMemo(
     () =>
@@ -451,23 +497,23 @@ const AnalysisPage = () => {
 
   const participantData = useMemo(() => aggregateParticipantPieData(records), [records]);
 
-  const monthData = useMemo(
-    () =>
-      aggregateByCommaSeparated(records, (r) => monthLabel(r.date), '날짜 없음'),
-    [records],
-  );
-
-  /** 월별 가격 총합(원). 가격 미입력 record는 제외 */
-  const monthPriceData = useMemo(() => {
-    const map = new Map<string, number>();
+  /** 월별 가격 총합(원) + 건수. 가격 미입력 record는 가격 합계에서만 제외, 건수는 항상 카운트 */
+  const monthData = useMemo(() => {
+    const map = new Map<string, { priceSum: number; count: number }>();
     for (const r of records) {
-      const priceNum = parsePrice(r.price);
-      if (priceNum == null) continue;
       const m = monthLabel(r.date);
-      map.set(m, (map.get(m) ?? 0) + priceNum);
+      const cur = map.get(m) ?? { priceSum: 0, count: 0 };
+      cur.count += 1;
+      const priceNum = parsePrice(r.price);
+      if (priceNum != null) cur.priceSum += priceNum;
+      map.set(m, cur);
     }
     return Array.from(map.entries())
-      .map(([name, value]) => ({ name, value }))
+      .map(([name, { priceSum, count }]) => ({
+        name,
+        value: priceSum,
+        secondaryValue: count,
+      }))
       .sort((a, b) => b.value - a.value);
   }, [records]);
 
@@ -496,6 +542,8 @@ const AnalysisPage = () => {
     themename: r.themename,
     date: r.date,
     shop_name: r.shop_name,
+    price: r.price,
+    genre: r.genre,
   });
 
   const openDetailModal = (title: string, items: DetailRecord[]) => {
@@ -557,13 +605,6 @@ const AnalysisPage = () => {
       .filter((r) => (r.themename?.trim() ?? '') === label)
       .map(toDetail);
     openDetailModal(`테마별 가격 · ${label}`, items);
-  };
-
-  const handleMonthPriceClick = (label: string) => {
-    const items = records
-      .filter((r) => monthLabel(r.date) === label && parsePrice(r.price) != null)
-      .map(toDetail);
-    openDetailModal(`월별 가격 총합 · ${label}`, items);
   };
 
   const handleParticipantClick = (label: string) => {
@@ -673,17 +714,24 @@ const AnalysisPage = () => {
           <div className="flex flex-col gap-[16px] px-4">
             <RecordPieSection
               id="section-genre"
-              title="장르"
+              title="장르 (가격 총합 / 건수)"
               data={genreData}
               layout="ranking"
               onItemClick={handleGenreClick}
+              valueFormatter={(v) => v.toLocaleString()}
+              secondaryFormatter={(v) => `${v}건`}
+              showTotal
+              type="genre-price-total"
             />
             <RecordPieSection
               id="section-month"
-              title="월별"
+              title="월별 (가격 총합 / 건수)"
               data={monthData}
               layout="ranking"
               onItemClick={handleMonthClick}
+              valueFormatter={(v) => v.toLocaleString()}
+              secondaryFormatter={(v) => `${v}건`}
+              showTotal
             />
             <RecordPieSection
               id="section-part-count"
@@ -715,16 +763,6 @@ const AnalysisPage = () => {
               valueFormatter={(v) => v.toLocaleString()}
               showTotal
             />
-            <RecordPieSection
-              id="section-month-price"
-              title="월별 가격 총합"
-              data={monthPriceData}
-              layout="ranking"
-              onItemClick={handleMonthPriceClick}
-              valueFormatter={(v) => v.toLocaleString()}
-              showTotal
-            />
-
           </div>
         </>
       )}
@@ -738,7 +776,7 @@ const AnalysisPage = () => {
             {detailModal.items.length === 0 ? (
               <p className="text-sm text-zinc-500">표시할 기록이 없습니다.</p>
             ) : (
-              <ul className="max-h-[60vh] overflow-y-auto divide-y divide-zinc-100">
+              <ul className="max-h-[68vh] overflow-y-auto divide-y divide-zinc-100">
                 {detailModal.items.map((item, i) => (
                   <li key={i} className="flex flex-col gap-1 py-2 text-sm">
                     <span className="font-medium truncate text-zinc-900">
@@ -746,9 +784,12 @@ const AnalysisPage = () => {
                     </span>
                     <div className="flex gap-2 text-xs text-zinc-600">
                       <span>{item.date?.trim() || '날짜 없음'}</span>
-                      <span className="text-zinc-300">·</span>
+                      <span>{item.genre?.trim() || '장르 없음'}</span>
                       <span className="truncate">
                         {item.shop_name?.trim() || '매장명 없음'}
+                      </span>
+                      <span className="truncate">
+                        {parsePrice(item.price)?.toLocaleString() || '가격 없음'}
                       </span>
                     </div>
                   </li>

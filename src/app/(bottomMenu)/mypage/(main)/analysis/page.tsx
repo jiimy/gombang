@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Cell,
   Legend,
@@ -12,6 +12,7 @@ import {
 import { createClient } from '@/util/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import BasicModal from '@/components/portalModal/basicModal/BasicModal';
+import s from './analysis.module.scss';
 
 type AnalysisRecordRow = {
   genre: string | null;
@@ -21,6 +22,7 @@ type AnalysisRecordRow = {
   date: string | null;
   themename: string | null;
   shop_name: string | null;
+  price: string | null;
 };
 
 type DetailRecord = {
@@ -28,6 +30,15 @@ type DetailRecord = {
   date: string | null;
   shop_name: string | null;
 };
+
+const SECTION_NAV: { id: string; label: string }[] = [
+  { id: 'section-genre', label: '장르' },
+  { id: 'section-month', label: '월별' },
+  { id: 'section-part-count', label: '참여 인원' },
+  { id: 'section-group', label: '그룹' },
+  { id: 'section-participant', label: '참여자' },
+  { id: 'section-theme-price', label: '테마별 가격' },
+];
 
 const PIE_COLORS = [
   '#6366f1',
@@ -150,6 +161,15 @@ function aggregateParticipantPieData(rows: AnalysisRecordRow[]): { name: string;
   return out.sort((a, b) => b.value - a.value);
 }
 
+/** "30,000" / "30000원" 등 → 30000. 숫자 추출 불가하면 null */
+function parsePrice(value: string | null | undefined): number | null {
+  if (value == null) return null;
+  const digitsOnly = String(value).replace(/[^0-9]/g, '');
+  if (!digitsOnly) return null;
+  const n = Number(digitsOnly);
+  return Number.isFinite(n) ? n : null;
+}
+
 function monthLabel(dateStr: string | null): string {
   if (!dateStr?.trim()) return '날짜 없음';
   const d = dateStr.trim();
@@ -190,15 +210,19 @@ function sortChartData(
 }
 
 function RecordPieSection({
+  id,
   title,
   data,
   layout = 'pie',
   onItemClick,
+  valueFormatter,
 }: {
+  id?: string;
   title: string;
   data: { name: string; value: number }[];
   layout?: 'pie' | 'ranking';
   onItemClick?: (label: string) => void;
+  valueFormatter?: (value: number) => string;
 }) {
   const [sortState, setSortState] = useState<ChartSortState>({
     kind: 'count',
@@ -223,7 +247,10 @@ function RecordPieSection({
     ].join(' ');
 
   return (
-    <section className="p-4 bg-white border rounded-lg shadow-sm border-zinc-200">
+    <section
+      id={id}
+      className="p-4 bg-white border rounded-lg shadow-sm border-zinc-200 scroll-mt-20"
+    >
       <div className="flex flex-col gap-2 mb-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <h2 className="text-sm font-semibold text-zinc-900">{title}</h2>
         {hasData ? (
@@ -271,7 +298,7 @@ function RecordPieSection({
             return (
               <li
                 key={`${row.name}-${i}`}
-                className="flex items-center min-w-0 gap-3 text-sm cursor-pointer hover:bg-zinc-50 rounded-md px-1 -mx-1"
+                className="flex items-center min-w-0 gap-3 px-1 -mx-1 text-sm rounded-md cursor-pointer hover:bg-zinc-50"
                 onClick={() => onItemClick?.(row.name)}
                 role={onItemClick ? 'button' : undefined}
                 tabIndex={onItemClick ? 0 : undefined}
@@ -296,8 +323,8 @@ function RecordPieSection({
                       style={{ width: `${pct}%`, backgroundColor: barColor }}
                     />
                   </div>
-                  <span className="w-10 font-medium text-right shrink-0 tabular-nums text-zinc-900">
-                    {row.value}
+                  <span className="font-medium text-right min-w-10 shrink-0 tabular-nums text-zinc-900">
+                    {valueFormatter ? valueFormatter(row.value) : row.value}
                   </span>
                 </div>
               </li>
@@ -356,7 +383,7 @@ const AnalysisPage = () => {
       try {
         const { data, error } = await supabase
           .from('record')
-          .select('genre,part_person_count,group_name,participant,date,themename,shop_name')
+          .select('genre,part_person_count,group_name,participant,date,themename,shop_name,price')
           .eq('email', user.email)
           .order('id', { ascending: false });
 
@@ -414,6 +441,27 @@ const AnalysisPage = () => {
       aggregateByCommaSeparated(records, (r) => monthLabel(r.date), '날짜 없음'),
     [records],
   );
+
+  /** 테마명별 평균 가격(원). 가격 미입력 record는 제외 */
+  const themePriceData = useMemo(() => {
+    const acc = new Map<string, { sum: number; count: number }>();
+    for (const r of records) {
+      const name = r.themename?.trim();
+      if (!name) continue;
+      const priceNum = parsePrice(r.price);
+      if (priceNum == null) continue;
+      const cur = acc.get(name) ?? { sum: 0, count: 0 };
+      cur.sum += priceNum;
+      cur.count += 1;
+      acc.set(name, cur);
+    }
+    return Array.from(acc.entries())
+      .map(([name, { sum, count }]) => ({
+        name,
+        value: Math.round(sum / count),
+      }))
+      .sort((a, b) => b.value - a.value);
+  }, [records]);
 
   const toDetail = (r: AnalysisRecordRow): DetailRecord => ({
     themename: r.themename,
@@ -475,6 +523,13 @@ const AnalysisPage = () => {
       '그룹 없음',
     );
 
+  const handleThemePriceClick = (label: string) => {
+    const items = records
+      .filter((r) => (r.themename?.trim() ?? '') === label)
+      .map(toDetail);
+    openDetailModal(`테마별 가격 · ${label}`, items);
+  };
+
   const handleParticipantClick = (label: string) => {
     const suffixMatch = label.match(/^(.+?)\s+(\d+)$/);
     const prefixCandidate = suffixMatch ? suffixMatch[1] : null;
@@ -500,6 +555,42 @@ const AnalysisPage = () => {
     openDetailModal(`참여자 · ${label}`, items);
   };
 
+  const [activeSection, setActiveSection] = useState<string>(SECTION_NAV[0]?.id ?? '');
+  /** 클릭 직후 IntersectionObserver가 중간 섹션을 잠시 active로 잡아 깜빡이는 것 방지용 */
+  const navLockUntilRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (fetching) return;
+    const elements = SECTION_NAV.map((nav) => document.getElementById(nav.id)).filter(
+      (el): el is HTMLElement => !!el,
+    );
+    if (elements.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (Date.now() < navLockUntilRef.current) return;
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        const top = visible[0]?.target as HTMLElement | undefined;
+        if (top?.id) setActiveSection(top.id);
+      },
+      { rootMargin: '-20% 0px -70% 0px', threshold: 0 },
+    );
+    elements.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [fetching, records.length]);
+
+  const scrollToSection = (id: string) => {
+    if (typeof document === 'undefined') return;
+    const el = document.getElementById(id);
+    if (!el) return;
+    setActiveSection(id);
+    navLockUntilRef.current = Date.now() + 700;
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   if (loading) {
     return <div className="p-4 text-sm text-zinc-500">로딩 중...</div>;
   }
@@ -509,47 +600,83 @@ const AnalysisPage = () => {
   }
 
   return (
-    <div className="p-4 space-y-6">
-      <h1 className="text-lg font-semibold text-zinc-900">기록 분석</h1>
+    <div className="py-4 space-y-6">
       {fetching ? (
         <div className="text-sm text-zinc-500">기록 불러오는 중...</div>
       ) : fetchError ? (
         <div className="text-sm text-red-500">{fetchError}</div>
       ) : (
         <>
-          <p className="text-sm text-zinc-600">
-            내 기록 {records.length}건 기준 ({user.email})
-          </p>
-          <div className="flex flex-col gap-[16px]">
+          <div className="px-4 mb-0">
+            <h1 className="text-lg font-semibold text-zinc-900">기록 분석</h1>
+            <p className="text-sm text-zinc-600">
+              내 기록 {records.length}건 기준 ({user.email})
+            </p>
+          </div>
+          <nav className={`${s.sectionNav} flex flex-wrap gap-2 px-4`}>
+            {SECTION_NAV.map((nav) => {
+              const isActive = activeSection === nav.id;
+              return (
+                <button
+                  key={nav.id}
+                  type="button"
+                  aria-current={isActive ? 'true' : undefined}
+                  onClick={() => scrollToSection(nav.id)}
+                  className={[
+                    'px-3 py-1 text-xs font-medium transition-colors border rounded-full',
+                    isActive
+                      ? 'bg-zinc-900 text-white border-zinc-900 shadow-sm'
+                      : 'bg-white border-zinc-200 text-zinc-700 hover:bg-zinc-100 active:bg-zinc-200',
+                  ].join(' ')}
+                >
+                  {nav.label}
+                </button>
+              );
+            })}
+          </nav>
+          <div className="flex flex-col gap-[16px] px-4">
             <RecordPieSection
+              id="section-genre"
               title="장르"
               data={genreData}
               layout="ranking"
               onItemClick={handleGenreClick}
             />
             <RecordPieSection
+              id="section-month"
               title="월별"
               data={monthData}
               layout="ranking"
               onItemClick={handleMonthClick}
             />
             <RecordPieSection
+              id="section-part-count"
               title="참여 인원"
               data={partCountData}
               layout="ranking"
               onItemClick={handlePartCountClick}
             />
             <RecordPieSection
+              id="section-group"
               title="그룹"
               data={groupData}
               layout="ranking"
               onItemClick={handleGroupClick}
             />
             <RecordPieSection
+              id="section-participant"
               title="참여자"
               data={participantData}
               layout="ranking"
               onItemClick={handleParticipantClick}
+            />
+            <RecordPieSection
+              id="section-theme-price"
+              title="테마별 가격"
+              data={themePriceData}
+              layout="ranking"
+              onItemClick={handleThemePriceClick}
+              valueFormatter={(v) => v.toLocaleString()}
             />
 
           </div>
@@ -558,7 +685,7 @@ const AnalysisPage = () => {
       {isDetailModalOpen && detailModal && (
         <BasicModal setOnModal={setIsDetailModalOpen} dimClick>
           <div className="flex flex-col gap-3 min-w-[260px] max-w-[80vw]">
-            <h3 className="text-base font-semibold text-zinc-900 pr-6">
+            <h3 className="pr-6 text-base font-semibold text-zinc-900">
               {detailModal.title}
             </h3>
             <p className="text-xs text-zinc-500">총 {detailModal.items.length}건</p>
@@ -567,8 +694,8 @@ const AnalysisPage = () => {
             ) : (
               <ul className="max-h-[60vh] overflow-y-auto divide-y divide-zinc-100">
                 {detailModal.items.map((item, i) => (
-                  <li key={i} className="py-2 flex flex-col gap-1 text-sm">
-                    <span className="font-medium text-zinc-900 truncate">
+                  <li key={i} className="flex flex-col gap-1 py-2 text-sm">
+                    <span className="font-medium truncate text-zinc-900">
                       {item.themename?.trim() || '테마명 없음'}
                     </span>
                     <div className="flex gap-2 text-xs text-zinc-600">

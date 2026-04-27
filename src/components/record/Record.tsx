@@ -708,7 +708,7 @@ const Record = ({
             rows={3}
             className="flex w-full px-3 py-2 text-sm border rounded-md border-input bg-background ring-offset-background placeholder:text-zinc-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           />
-          <Controller
+          {/* <Controller
             name="commentPublic"
             control={control}
             defaultValue={true}
@@ -734,7 +734,7 @@ const Record = ({
                 </label>
               </div>
             )}
-          />
+          /> */}
         </div>
 
         <div>

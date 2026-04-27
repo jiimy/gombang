@@ -156,8 +156,7 @@ const MyPage = () => {
           </li> */}
         </ul>
       </div>
-      <hr className="my-2"/>
-      <div className="">
+      {/* <div className="">
         <p className="mb-1 text-sm text-gray-500">새 기록 작성 시 공개 설정</p>
         <div className="flex flex-col gap-2 sm:flex-row sm:gap-6">
           <label className="flex items-center gap-2 text-sm cursor-pointer">
@@ -179,7 +178,7 @@ const MyPage = () => {
             비공개
           </label>
         </div>
-      </div>
+      </div> */}
       <Update/>
       {
         groupModalOpen &&

@@ -11,7 +11,7 @@ export default function RootLayout({
     <div>
       <Suspense fallback={<div>Loading...</div>}>
         {children}
-        <BottomMenu />
+        {/* <BottomMenu /> */}
       </Suspense>
     </div>
   )

@@ -1,0 +1,106 @@
+.content__container {
+  justify-content: center;
+  padding: 24px 16px;
+
+  .content__wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 100%;
+  }
+}
+
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  min-height: 110px;
+  padding: 20px 22px;
+  border: 2px solid rgba(0, 0, 0, 0.06);
+  border-radius: 16px;
+  background: #fff;
+  color: #1f2937;
+  text-decoration: none;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(17, 24, 39, 0.04);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    transform: translate(40%, -40%);
+    background: var(--card-accent, #e5e7eb);
+    opacity: 0.35;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    pointer-events: none;
+  }
+
+  &:hover {
+    transform: translateY(-2px);
+    border-color: var(--card-accent, #d1d5db);
+    box-shadow: 0 10px 24px rgba(17, 24, 39, 0.08);
+
+    &::after {
+      transform: translate(30%, -30%) scale(1.1);
+      opacity: 0.55;
+    }
+
+    .card__title {
+      color: var(--card-accent-strong, #111827);
+    }
+  }
+
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 4px 10px rgba(17, 24, 39, 0.06);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--card-accent-strong, #111827);
+    outline-offset: 2px;
+  }
+}
+
+.card__icon {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.card__title {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  transition: color 0.2s ease;
+}
+
+.card__desc {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.card__record {
+  --card-accent: #fde68a;
+  --card-accent-strong: #d97706;
+}
+
+.card__history {
+  --card-accent: #bae6fd;
+  --card-accent-strong: #0284c7;
+}
+
+.card__analysis {
+  --card-accent: #c4b5fd;
+  --card-accent-strong: #6d28d9;
+}

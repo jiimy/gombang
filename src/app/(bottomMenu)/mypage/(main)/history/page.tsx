@@ -304,6 +304,7 @@ const SearchPage = () => {
   const filterSummaryText = useMemo(() => {
     const order: Category[] = ['genre', 'shop_name', 'group_name', 'comment_public'];
     return order
+      .filter((cat) => cat !== 'comment_public')
       .map((cat) => `${categoryLabel[cat]}-${selections[cat] ?? '전체'}`)
       .join(' / ');
   }, [selections]);
@@ -379,7 +380,9 @@ const SearchPage = () => {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {(['genre', 'shop_name', 'group_name', 'comment_public'] as Category[]).map((key) => (
+          {(['genre', 'shop_name', 'group_name', 'comment_public'] as Category[])
+            .filter((key) => key !== 'comment_public')
+            .map((key) => (
             <button
               key={key}
               type="button"

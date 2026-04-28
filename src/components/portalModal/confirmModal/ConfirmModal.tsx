@@ -3,6 +3,7 @@ import classNames from 'classnames';
 import ModalFrame from '../ModalFrame';
 import s from './comfirmModal.module.scss';
 import { Modal } from '../Modal';
+import { cx } from 'class-variance-authority';
 
 type modal = {
   title: string;
@@ -27,11 +28,11 @@ const ConfirmModal = ({
       isDim={isDim}
       onClose
       dimClick={dimClick}
-      className={classNames([s.confirm_modal], className)}
+      className={cx([s.confirm_modal], className)}
     >
       <Modal.Title>{title}</Modal.Title>
       {children && <Modal.Content>{children}</Modal.Content>}
-      <div className="mt-6 flex gap-3">
+      <div className="flex gap-3 mt-6">
         <button
           type="button"
           onClick={async () => {

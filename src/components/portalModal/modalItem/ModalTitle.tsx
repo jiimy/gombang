@@ -6,7 +6,7 @@ type ModalTitleType = {
 
 const ModalTitle = ({ children }: ModalTitleType) => {
   return (
-    <div className='text-3xl mb-16 font-bold'>
+    <div className='mb-16 text-xl'>
       {children}
     </div>
   )

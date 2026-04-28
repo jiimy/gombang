@@ -6,12 +6,12 @@ import { createClient } from '@/util/supabase/client';
 import { cn } from '@/lib/utils';
 import { createRecord, updateRecord } from '@/api/record';
 import { Input } from '@/components/ui/input';
-import ConfirmModal from '@/components/portalModal/confirmModal/ConfirmModal';
 import { useAuth } from '@/hooks/useAuth';
 import GroupSelectModal from '@/components/portalModal/groupSelectModal/GroupSelectModal';
 import { AiOutlineExclamationCircle } from "react-icons/ai";
 import { readDefaultCommentPublic } from '@/util/commentPublicPreference';
 import Tooltip from '../tooltip/Tooltip';
+import ConfirmModal from '../portalModal/confirmModal/ConfirmModal';
 
 type ThemeRow = { themename: string; shop_name: string | null };
 type UserGroupRow = { group_name: string | null; name: string | null };
@@ -403,6 +403,12 @@ const Record = ({
         return;
       }
 
+      if (!data.date?.trim()) {
+        alert('날짜를 입력해주세요');
+        dateInputRef.current?.focus();
+        return;
+      }
+
       const userName = user?.user_metadata?.full_name || user?.user_metadata?.name;
 
       const { data: existing, error } = await supabase
@@ -454,6 +460,12 @@ const Record = ({
     if (!data.shopName?.trim()) {
       alert('없는 테마입니다');
       themeInputRef.current?.focus();
+      return;
+    }
+
+    if (!data.date?.trim()) {
+      alert('날짜를 입력해주세요');
+      dateInputRef.current?.focus();
       return;
     }
 
@@ -750,7 +762,7 @@ const Record = ({
         <button
           type="submit"
           disabled={isSubmitting || confirmModalOpen || savingAfterConfirm}
-          className="w-full py-3 text-sm font-medium text-white transition rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50"
+          className="w-full mb-[20px] py-3 text-sm font-medium text-white transition rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50"
         >
           {savingAfterConfirm || isSubmitting
             ? isEditMode
@@ -761,6 +773,26 @@ const Record = ({
               : '저장'}
         </button>
       </form>
+
+      {confirmModalOpen && (
+        <ConfirmModal
+          setOnModal={setConfirmModalOpen}
+          isDim
+          dimClick
+          className="!w-[500px] !h-[200px]"
+          title="이미 같은 테마의 기록이 존재합니다. 그래도 저장하시겠습니까?"
+          onConfirm={async () => {
+            if (pendingSaveData) {
+              await doSaveAfterConfirm(pendingSaveData);
+            }
+          }}
+          onCancel={() => {
+            setPendingSaveData(null);
+          }}
+        >
+          <span />
+        </ConfirmModal>
+      )}
 
       {groupModalOpen && activeGroup && (
         <GroupSelectModal

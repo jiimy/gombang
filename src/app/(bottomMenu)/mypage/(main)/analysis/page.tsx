@@ -517,7 +517,7 @@ const AnalysisPage = () => {
       .sort((a, b) => b.value - a.value);
   }, [records]);
 
-  /** 테마명별 평균 가격(원). 가격 미입력 record는 제외 */
+  /** 테마명별 가격 총합(원) + 건수. 중복 테마는 가격을 합산. 가격 미입력 record는 제외 */
   const themePriceData = useMemo(() => {
     const acc = new Map<string, { sum: number; count: number }>();
     for (const r of records) {
@@ -533,7 +533,8 @@ const AnalysisPage = () => {
     return Array.from(acc.entries())
       .map(([name, { sum, count }]) => ({
         name,
-        value: Math.round(sum / count),
+        value: sum,
+        secondaryValue: count,
       }))
       .sort((a, b) => b.value - a.value);
   }, [records]);
@@ -756,11 +757,12 @@ const AnalysisPage = () => {
             />
             <RecordPieSection
               id="section-theme-price"
-              title="테마별 가격"
+              title="테마별 가격 (가격 총합 / 건수)"
               data={themePriceData}
               layout="ranking"
               onItemClick={handleThemePriceClick}
               valueFormatter={(v) => v.toLocaleString()}
+              secondaryFormatter={(v) => `${v}건`}
               showTotal
             />
           </div>

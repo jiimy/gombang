@@ -143,6 +143,18 @@ const MyPage = () => {
               분석
             </button>
           </li>
+          <li><hr className="my-3" /></li>
+          <li>
+            <button
+              type="button"
+              onClick={() => {
+                router.push('/mypage/inquiry');
+              }}
+              className=""
+            >
+              문의
+            </button>
+          </li>
           {/* <li>
             <button
               type="button"
@@ -190,7 +202,7 @@ const MyPage = () => {
           </label>
         </div>
       </div> */}
-      <Update />
+      {/* <Update /> */}
       {
         groupModalOpen &&
         <GroupModal setOnModal={setGroupModalOpen} />

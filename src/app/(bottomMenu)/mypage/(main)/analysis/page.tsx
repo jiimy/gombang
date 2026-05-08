@@ -281,7 +281,7 @@ function RecordPieSection({
           {type == 'genre-price-total' && <span className="text-xs text-zinc-500">(중복 장르 포함)</span>}
           </h2>
         {hasData ? (
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center content-between gap-2">
             {showTotal ? (
               <span className="text-xs font-semibold tabular-nums text-zinc-900">
                 총 {valueFormatter ? valueFormatter(totalValue) : totalValue.toLocaleString()}
@@ -362,7 +362,7 @@ function RecordPieSection({
                       style={{ width: `${pct}%`, backgroundColor: barColor }}
                     />
                   </div>
-                  <span className="flex flex-col items-end font-medium text-right min-w-10 shrink-0 tabular-nums text-zinc-900">
+                  <span className="flex flex-row items-center gap-[8px] font-medium text-right min-w-10 shrink-0 tabular-nums text-zinc-900">
                     <span>
                       {valueFormatter ? valueFormatter(row.value) : row.value}
                     </span>

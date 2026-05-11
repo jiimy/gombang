@@ -13,16 +13,20 @@ export const metadata: Metadata = {
     default: "곰방",
     template: "%s | 곰방",
   },
-  description: "방탈출 기록을 관리하고 공유하는 서비스",
+  description: "방탈출 기록을 관리하고 통계 및 분석하는 서비스",
   keywords: ["방탈출", "방탈출 기록", "방탈출 기록 분석", "방탈출 통계", "곰방"],
   applicationName: "곰방",
   authors: [{ name: "곰방" }],
   verification: {
     google: "4kIu_8bINkiduTRiLtTNUYuw-pKWhPhPeSU1wkEb2yU",
   },
-  icons: {
-    icon: "/favicon.ico",
-  },
+  category: 'Technology',
+  // icons: {
+  //   icon: "/favicon.ico",
+  // },
+  alternates: {
+  canonical: "https://gombang.vercel.app",
+},
   openGraph: {
     title: "곰방",
     description: "방탈출 기록의 통계를 보는 서비스",

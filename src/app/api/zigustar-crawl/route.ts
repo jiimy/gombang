@@ -1,56 +1,56 @@
-// import * as cheerio from "cheerio";
-// import { NextResponse } from "next/server";
-// import { createServerSupabase } from "@/util/supabase/server";
+import * as cheerio from "cheerio";
+import { NextResponse } from "next/server";
+import { createServerSupabase } from "@/util/supabase/server";
 
-// // 지구별 크롤링.
-// export async function GET() {
-//   try {
-//     const supabase = await createServerSupabase();
+// 지구별 크롤링.
+export async function GET() {
+  try {
+    const supabase = await createServerSupabase();
 
-//     const res = await fetch("https://www.xn--2e0b040a4xj.com/theme");
-//     const html = await res.text();
+    const res = await fetch("https://www.xn--2e0b040a4xj.com/theme");
+    const html = await res.text();
 
-//     const $ = cheerio.load(html);
+    const $ = cheerio.load(html);
 
-//     const rows: { themename: string; location: string; shop_name: string }[] = [];
+    const rows: { themename: string; location: string; shop_name: string }[] = [];
 
-//     $("h2").each((_, el) => {
-//       const text = $(el).text().trim();
+    $("h2").each((_, el) => {
+      const text = $(el).text().trim();
 
-//       if (!text.startsWith("#")) return;
+      if (!text.startsWith("#")) return;
 
-//       const parts = text.split("\n").map((v) => v.trim());
+      const parts = text.split("\n").map((v) => v.trim());
 
-//       if (parts.length < 2) return;
+      if (parts.length < 2) return;
 
-//       rows.push({
-//         themename: parts[1],
-//         location: parts[0].replace("#", ""),
-//         shop_name: "지구별",
-//       });
-//     });
+      rows.push({
+        themename: parts[1],
+        location: parts[0].replace("#", ""),
+        shop_name: "지구별",
+      });
+    });
 
-//     console.log("rows", rows);
+    console.log("rows", rows);
 
-//     const { data, error } = await supabase
-//       .from("theme")
-//       .upsert(rows, {
-//         onConflict: "location,shop_name,themename",
-//         ignoreDuplicates: true,
-//       });
+    const { data, error } = await supabase
+      .from("theme")
+      .upsert(rows, {
+        onConflict: "location,shop_name,themename",
+        ignoreDuplicates: true,
+      });
 
-//     if (error) throw error;
+    if (error) throw error;
 
-//     return NextResponse.json({
-//       inserted: rows.length,
-//     });
+    return NextResponse.json({
+      inserted: rows.length,
+    });
 
-//   } catch (error) {
-//     console.error("Error fetching themes:", error);
+  } catch (error) {
+    console.error("Error fetching themes:", error);
 
-//     return NextResponse.json(
-//       { error: String(error) },
-//       { status: 500 }
-//     );
-//   }
-// }
+    return NextResponse.json(
+      { error: String(error) },
+      { status: 500 }
+    );
+  }
+}

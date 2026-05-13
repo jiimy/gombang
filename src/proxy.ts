@@ -93,8 +93,5 @@ export const config = {
   matcher: [
     "/api/:path*",
     "/mypage/:path*",
-    "/bookmark/:path*",
-    "/upload/:path*",
-    "/support/:path*",
   ],
 };

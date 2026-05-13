@@ -1,14 +1,11 @@
 import type { MetadataRoute } from 'next';
 
-const BASE_URL = 'https://gombang.vercel.app';
-
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: '*',
       allow: '/',
     },
-    sitemap: `${BASE_URL}/sitemap.xml`,
-    host: BASE_URL,
+    sitemap: 'https://gombang.vercel.app/sitemap.xml',
   };
 }

@@ -2,6 +2,28 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
+const ADMIN_COOKIE_NAME = "admin-session";
+
+function isAdminAuthenticated(request: NextRequest): boolean {
+  const adminCookie = request.cookies.get(ADMIN_COOKIE_NAME);
+  if (!adminCookie?.value) return false;
+
+  const allowedEmail =
+    process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? process.env.ADMIN_EMAIL;
+  if (!allowedEmail) return false;
+
+  try {
+    const decoded = decodeURIComponent(adminCookie.value);
+    const parsed = JSON.parse(decoded) as {
+      email?: string;
+      isAdmin?: boolean;
+    };
+    return parsed?.isAdmin === true && parsed?.email === allowedEmail;
+  } catch {
+    return false;
+  }
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -60,19 +82,22 @@ export async function proxy(request: NextRequest) {
     // https://supabase.com/docs/guides/auth/server-side/nextjs
     const user = await supabase.auth.getUser();
 
+    const adminAuthenticated = isAdminAuthenticated(request);
+    const isLoggedIn = user?.data?.user !== null || adminAuthenticated;
+
     // console.log("request", request.nextUrl.pathname);
     // console.log("user", user);
     // protected routes
     if (
       request.nextUrl.pathname.startsWith("/mypage") &&
-      user?.data?.user === null
+      !isLoggedIn
     ) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
 
     if (
       request.nextUrl.pathname.startsWith("/record") &&
-      user?.data?.user === null
+      !isLoggedIn
     ) {
       return NextResponse.redirect(new URL("/login", request.url));
     }

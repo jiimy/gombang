@@ -2,11 +2,15 @@
 
 import { createClient } from '@/util/supabase/client';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/header/Header';
 import Loading from '@/components/loading/Loading';
 import BottomMenu from '@/components/bottomMenu/BottomMenu';
+
+const ADMIN_COOKIE_NAME = 'admin-session';
+const ADMIN_COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30일
 
 const providers = [
   {
@@ -65,6 +69,9 @@ const providers = [
 
 function LoginPageContent() {
   const [loadingProvider, setLoadingProvider] = useState<'google' | 'github' | 'kakao' | null>(null);
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminLoading, setAdminLoading] = useState(false);
+  const [adminError, setAdminError] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
@@ -76,10 +83,54 @@ function LoginPageContent() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         router.push('/');
+        return;
+      }
+      if (typeof document !== 'undefined') {
+        const hasAdminCookie = document.cookie
+          .split('; ')
+          .some((c) => c.startsWith(`${ADMIN_COOKIE_NAME}=`));
+        if (hasAdminCookie) {
+          router.push(next);
+        }
       }
     };
     checkUser();
-  }, [router, supabase]);
+  }, [router, supabase, next]);
+
+  const handleAdminLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    const allowedEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+    if (!allowedEmail) {
+      setAdminError('관리자 이메일이 설정되어 있지 않습니다.');
+      return;
+    }
+    if (adminEmail.trim() !== allowedEmail) {
+      setAdminError('관리자 정보가 일치하지 않습니다.');
+      return;
+    }
+    setAdminError(null);
+    setAdminLoading(true);
+    try {
+      const payload = encodeURIComponent(
+        JSON.stringify({ email: allowedEmail, isAdmin: true })
+      );
+      const isSecure =
+        typeof window !== 'undefined' && window.location.protocol === 'https:';
+      const cookieParts = [
+        `${ADMIN_COOKIE_NAME}=${payload}`,
+        'Path=/',
+        `Max-Age=${ADMIN_COOKIE_MAX_AGE}`,
+        'SameSite=Lax',
+      ];
+      if (isSecure) cookieParts.push('Secure');
+      document.cookie = cookieParts.join('; ');
+      window.location.assign(next);
+    } catch (err) {
+      console.error('관리자 로그인 오류:', err);
+      setAdminError('관리자 로그인 중 오류가 발생했습니다.');
+      setAdminLoading(false);
+    }
+  };
 
   const baseUrl =
   process.env.NODE_ENV === 'production'
@@ -170,6 +221,39 @@ function LoginPageContent() {
               </span>
             </Button>
           ))}
+        </div>
+
+        <div className="w-full max-w-sm mt-6">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="flex-1 h-px bg-neutral-200" />
+            <span className="text-xs text-neutral-500">관리자 로그인</span>
+            <div className="flex-1 h-px bg-neutral-200" />
+          </div>
+
+          <form onSubmit={handleAdminLogin} className="flex flex-col gap-2">
+            <Input
+              type="text"
+              value={adminEmail}
+              onChange={(e) => setAdminEmail(e.target.value)}
+              placeholder="관리자 이메일"
+              autoComplete="username"
+              disabled={adminLoading}
+            />
+            {adminError && (
+              <p className="text-xs text-red-600" role="alert">
+                {adminError}
+              </p>
+            )}
+            <Button
+              type="submit"
+              variant="default"
+              size="lg"
+              disabled={adminLoading || adminEmail.trim().length === 0}
+              className="w-full justify-center"
+            >
+              {adminLoading ? '로그인 중...' : '관리자로 로그인'}
+            </Button>
+          </form>
         </div>
       </div>
       <BottomMenu type="menu"/>

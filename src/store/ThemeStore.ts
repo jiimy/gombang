@@ -24,6 +24,8 @@ type ThemeStoreState = {
   recordError: string | null;
   setRecords: (records: UserRecordRow[]) => void;
   clearRecords: () => void;
+  addRecord: (record: UserRecordRow) => void;
+  updateRecord: (record: UserRecordRow) => void;
   fetchUserRecords: (email: string) => Promise<void>;
 };
 
@@ -40,6 +42,14 @@ export const useThemeStore = create<ThemeStoreState>((set) => ({
       isRecordLoading: false,
       recordError: null,
     }),
+  addRecord: (record) =>
+    set((state) => ({
+      records: [record, ...state.records.filter((r) => r.id !== record.id)],
+    })),
+  updateRecord: (record) =>
+    set((state) => ({
+      records: state.records.map((r) => (r.id === record.id ? record : r)),
+    })),
   fetchUserRecords: async (email) => {
     if (!email) {
       set({ records: [], isRecordLoading: false, recordError: null });

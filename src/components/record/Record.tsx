@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { createRecord, updateRecord } from '@/api/record';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
+import { useThemeStore } from '@/store/ThemeStore';
 import GroupSelectModal from '@/components/portalModal/groupSelectModal/GroupSelectModal';
 import { AiOutlineExclamationCircle } from "react-icons/ai";
 import { readDefaultCommentPublic } from '@/util/commentPublicPreference';
@@ -121,6 +122,8 @@ const Record = ({
   const isEditMode = mode === 'edit';
   const supabase = createClient();
   const { user } = useAuth();
+  const addRecordToStore = useThemeStore((state) => state.addRecord);
+  const updateRecordInStore = useThemeStore((state) => state.updateRecord);
   const [themeSuggestions, setThemeSuggestions] = useState<ThemeRow[]>([]);
   const [themeDropdownOpen, setThemeDropdownOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
@@ -425,7 +428,7 @@ const Record = ({
         return;
       }
 
-      await createRecord({
+      const created = await createRecord({
         themeName: trimmedThemeName,
         date: data.date || undefined,
         genre: data.genre || undefined,
@@ -442,6 +445,10 @@ const Record = ({
         commentPublic: effectiveCommentPublic(data.comment, data.commentPublic),
         spoiler: data.spoiler || undefined,
       });
+
+      if (created?.data) {
+        addRecordToStore(created.data);
+      }
 
       resetAllInputs();
       alert('저장되었습니다.');
@@ -470,7 +477,7 @@ const Record = ({
     }
 
     try {
-      await updateRecord({
+      const updated = await updateRecord({
         id: recordId,
         themeName: data.themeName?.trim() ?? '',
         date: data.date || undefined,
@@ -487,6 +494,11 @@ const Record = ({
         commentPublic: effectiveCommentPublic(data.comment, data.commentPublic),
         spoiler: data.spoiler || undefined,
       });
+
+      if (updated?.data) {
+        updateRecordInStore(updated.data);
+      }
+
       alert('수정되었습니다.');
       onSuccess?.();
     } catch (e) {
@@ -498,7 +510,7 @@ const Record = ({
     setSavingAfterConfirm(true);
     try {
       const userName = user?.user_metadata?.full_name || user?.user_metadata?.name;
-      await createRecord({
+      const created = await createRecord({
         themeName: data.themeName?.trim() ?? '',
         date: data.date || undefined,
         genre: data.genre || undefined,
@@ -515,6 +527,11 @@ const Record = ({
         commentPublic: effectiveCommentPublic(data.comment, data.commentPublic),
         spoiler: data.spoiler || undefined,
       });
+
+      if (created?.data) {
+        addRecordToStore(created.data);
+      }
+
       resetAllInputs();
       alert('저장되었습니다.');
       onSuccess?.();

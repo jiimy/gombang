@@ -1,4 +1,5 @@
 import axios from "axios";
+import type { UserRecordRow } from '@/store/ThemeStore';
 
 /** record 저장 API 요청 body */
 export type RecordRequestBody = {
@@ -46,7 +47,7 @@ export async function createRecord(body: RecordRequestBody) {
     throw new Error(typeof data?.error === 'string' ? data.error : '저장에 실패했습니다.');
   }
 
-  return data as { data: unknown };
+  return data as { data: UserRecordRow };
 }
 
 export async function updateRecord(body: UpdateRecordRequestBody) {
@@ -62,7 +63,7 @@ export async function updateRecord(body: UpdateRecordRequestBody) {
     throw new Error(typeof data?.error === 'string' ? data.error : '수정에 실패했습니다.');
   }
 
-  return data as { data: unknown };
+  return data as { data: UserRecordRow };
 }
 
 // 공개 기록 조회

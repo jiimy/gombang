@@ -13,21 +13,22 @@ import {
   writeDefaultCommentPublic,
 } from '@/util/commentPublicPreference';
 import Update from '@/components/update/Update';
+import { useThemeStore } from '@/store/ThemeStore';
 
 const MyPage = () => {
+  
   const router = useRouter();
   const { user, loading, signOut } = useAuth();
   const [groupModalOpen, setGroupModalOpen] = useState<boolean>(false);
   const [shareModalOpen, setShareModalOpen] = useState<boolean>(false);
+  // const records = useThemeStore((state) => state.records);
+  // const isRecordLoading = useThemeStore((state) => state.isRecordLoading);
+  // const recordError = useThemeStore((state) => state.recordError);
   const defaultCommentPublic = useSyncExternalStore(
     subscribeDefaultCommentPublic,
     readDefaultCommentPublic,
     () => false
   );
-  // const { data } = useQuery({
-  //   queryFn: () => myYoutubeUplaodApi(),
-  //   queryKey: ['myYoutubeUpload']
-  // });
 
   const handleLogout = async () => {
     try {

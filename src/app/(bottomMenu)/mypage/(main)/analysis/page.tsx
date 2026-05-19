@@ -9,21 +9,12 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from 'recharts';
-import { createClient } from '@/util/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import BasicModal from '@/components/portalModal/basicModal/BasicModal';
 import s from './analysis.module.scss';
+import { useThemeStore, type UserRecordRow } from '@/store/ThemeStore';
 
-type AnalysisRecordRow = {
-  genre: string | null;
-  part_person_count: number | null;
-  group_name: string | null;
-  participant: string | null;
-  date: string | null;
-  themename: string | null;
-  shop_name: string | null;
-  price: string | null;
-};
+type AnalysisRecordRow = UserRecordRow;
 
 type DetailRecord = {
   themename: string | null;
@@ -407,44 +398,15 @@ function RecordPieSection({
 }
 
 const AnalysisPage = () => {
-  const supabase = createClient();
   const { user, loading } = useAuth();
-  const [records, setRecords] = useState<AnalysisRecordRow[]>([]);
-  const [fetching, setFetching] = useState(false);
-  const [fetchError, setFetchError] = useState<string | null>(null);
+  const records = useThemeStore((state) => state.records);
+  const fetching = useThemeStore((state) => state.isRecordLoading);
+  const fetchError = useThemeStore((state) => state.recordError);
   const [detailModal, setDetailModal] = useState<{
     title: string;
     items: DetailRecord[];
   } | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-
-  useEffect(() => {
-    const load = async () => {
-      if (!user?.email) {
-        setRecords([]);
-        return;
-      }
-      setFetching(true);
-      setFetchError(null);
-      try {
-        const { data, error } = await supabase
-          .from('record')
-          .select('genre,part_person_count,group_name,participant,date,themename,shop_name,price')
-          .eq('email', user.email)
-          .order('id', { ascending: false });
-
-        if (error) throw error;
-        setRecords((data ?? []) as AnalysisRecordRow[]);
-      } catch (e) {
-        setRecords([]);
-        setFetchError(e instanceof Error ? e.message : '기록을 불러오지 못했습니다.');
-      } finally {
-        setFetching(false);
-      }
-    };
-
-    void load();
-  }, [supabase, user?.email]);
 
   /** 장르별 가격 총합(원) + 건수. 쉼표로 묶인 장르는 각 장르에 모두 합산.
    * 가격 미입력 record는 가격 합계에서만 제외, 건수는 항상 카운트 */
@@ -635,7 +597,17 @@ const AnalysisPage = () => {
 
   const [activeSection, setActiveSection] = useState<string>(SECTION_NAV[0]?.id ?? '');
   /** 클릭 직후 IntersectionObserver가 중간 섹션을 잠시 active로 잡아 깜빡이는 것 방지용 */
-  const navLockUntilRef = useRef<number>(0);
+  const navLockedRef = useRef<boolean>(false);
+  const navLockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (navLockTimerRef.current) {
+        clearTimeout(navLockTimerRef.current);
+        navLockTimerRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -647,7 +619,7 @@ const AnalysisPage = () => {
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (Date.now() < navLockUntilRef.current) return;
+        if (navLockedRef.current) return;
         const visible = entries
           .filter((e) => e.isIntersecting)
           .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
@@ -665,7 +637,12 @@ const AnalysisPage = () => {
     const el = document.getElementById(id);
     if (!el) return;
     setActiveSection(id);
-    navLockUntilRef.current = Date.now() + 700;
+    navLockedRef.current = true;
+    if (navLockTimerRef.current) clearTimeout(navLockTimerRef.current);
+    navLockTimerRef.current = setTimeout(() => {
+      navLockedRef.current = false;
+      navLockTimerRef.current = null;
+    }, 700);
     el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
